@@ -1,0 +1,50 @@
+{
+  "Oncology": {
+    "metaData": {
+      "submission": {
+        "submissionDate": "2025-11-05",
+        "type": "initial",
+        "submitterId": "999950000",
+        "genomicDataCenterId": "GRZHD0003",
+        "clinicalDataNodeId": "KDKHD0006",
+        "diseaseType": "oncological"
+      },
+      "mvConsent": {
+        "presentationDate": "2025-10-15",
+        "version": "Einwilligung Modellvorhaben 64e v1 (2025-03-03)",
+        "scope": [
+          {"type": "permit", "date": "2025-10-16", "domain": "mvSequencing"},
+          {"type": "permit", "date": "2025-10-16", "domain": "reIdentifiaction"},
+          {"type": "permit", "date": "2025-10-16", "domain": "caseIdentifiaction"}
+        ]
+      },
+      "researchConsents": [
+        {"schemaVersion": "2025.0.1", "presentationDate": "2025-10-16", "scope": {"extremlyLongJson":"extremlyLongJson", "secondEntry": "secondEntry"}, "noScopeJustification": ""}
+      ],
+      "coverageType": "GKV",
+      "tanC": "cdLdbdbiKQj9qIG3MdiLBPoV0Jl7U2zNzIW2vifrai5nlwb2tDIumx1I8t8Xc9TU",
+      "gender": "unkown",
+      "birthDate": "2000-01-01",
+      "addressAGS": "1234",
+      "decsisionToInclude": true,
+      "molecularBoardDescisionDate": "2025-10-30"
+    },
+    "case": {
+      "diagnosisOD": {
+        "mainDiagnosis": {
+          "date": "2025-05-10",
+          "code": "C10",
+          "system": "ICD-10-GM",
+          "version": "icd10.gm-2019-10-04"
+        },
+
+        "ecogPerformanceStatusScore": "1",
+        "germlineDiagnosisConfirmed": true,
+
+        "histology": {"code": "8720/3", "system": "ICD-O-3-M", "version": "icdo3morph.rev1de"},
+        "topography": {"code": "C69.3", "system": "ICD-O-3-T", "version": "icdo3topo.rev1de"},
+        "libraryType": "wgs"
+      }
+    }
+  }
+}
