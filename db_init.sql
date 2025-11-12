@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS cases (
     rejectionJustification TEXT,
     mainDiagnosis_date DATE,
     mainDiagnosis_code TEXT,
+    coverageType TEXT,
     ecog INTEGER,
     germlineConfirmed BOOLEAN,
     histology_code TEXT,
@@ -27,9 +28,21 @@ CREATE TABLE IF NOT EXISTS cases (
     histology_system TEXT,
     histology_version TEXT,
     topography_system TEXT,
-    topography_version TEXT
+    topography_version TEXT,
+    tanC TEXT,
+    mvConsent JSONB,
+    researchConsent JSONB,
+    transmitted BOOLEAN DEFAULT FALSE
 );
 
+-- Neue Tabelle für Übertragungen
+CREATE TABLE IF NOT EXISTS transmissions (
+    id SERIAL PRIMARY KEY,
+    case_id TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    request JSONB,
+    response JSONB
+);
 -- Konstanten-Tabelle mit auto-increment ID
 CREATE TABLE IF NOT EXISTS constants (
     id SERIAL PRIMARY KEY,
@@ -53,8 +66,18 @@ INSERT INTO constants (key, value) VALUES
 ('topography.version', 'icdo3topo.rev1de');
 
 
+-- researchConsent darf NULL sein
 ALTER TABLE cases
-ADD COLUMN mvConsent JSONB;
+ALTER COLUMN researchConsent DROP NOT NULL;
 
-ALTER TABLE cases
-ADD COLUMN researchConsent JSONB;
+-- Log-Tabelle für System- und Fehlernachrichten
+CREATE TABLE IF NOT EXISTS logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    pat_id TEXT,
+    case_id TEXT,
+    type TEXT CHECK (type IN ('info', 'error')),
+    text TEXT
+);
+
+
