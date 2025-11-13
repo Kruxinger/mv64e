@@ -1,27 +1,44 @@
-version: "3.9"
-
 services:
   db:
-    image: postgres:16
+    image: postgres:15
+    container_name: onco_db
     environment:
-      POSTGRES_DB: onco
       POSTGRES_USER: onco_user
       POSTGRES_PASSWORD: onco_pass
-    volumes:
-      - ./db_init.sql:/docker-entrypoint-initdb.d/db_init.sql
+      POSTGRES_DB: onco
     ports:
       - "5432:5432"
+    volumes:
+      - ./db_init.sql:/docker-entrypoint-initdb.d/db_init.sql:ro
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  web:
-    build: .
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: onco_app
     depends_on:
-      - db
-    ports:
-      - "5000:5000"
-    env_file:
-      - .env
+      db:
+        condition: service_healthy
     environment:
-      POSTGRES_HOST: db
-      POSTGRES_DB: onco
       POSTGRES_USER: onco_user
       POSTGRES_PASSWORD: onco_pass
+      POSTGRES_DB: onco
+      POSTGRES_HOST: db
+      RUNNING_IN_DOCKER: "true"
+      PYTHONUNBUFFERED: 1
+    volumes:
+      - .:/app
+    command: python app.py
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  db_data:

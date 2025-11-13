@@ -1,125 +1,213 @@
-<!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <title>Fall hinzufügen</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-{% include 'navbar.html' %}
+{% extends 'base.html' %}
+
+{% block title %}Fall hinzufügen – OncoApp{% endblock %}
+
+{% block content %}
 <div class="container my-4">
-  <h3>Fall hinzufügen</h3>
-  <form method="post" class="row g-3">
-    <div class="col-md-6">
-      <label class="form-label">Patienten-ID</label>
-      <input type="text" name="pat_id" class="form-control" required>
-    </div>
-    <div class="col-md-6">
-      <label class="form-label">Fall-ID</label>
-      <input type="text" name="localCaseId" class="form-control" required>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Gender</label>
-      <select name="gender" class="form-select">
-        <option value="männlich">männlich</option>
-        <option value="weiblich">weiblich</option>
-        <option value="divers">divers</option>
-        <option value="unbekannt">unbekannt</option>
-      </select>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Geburtsdatum</label>
-      <input type="date" name="birthDate" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Address AGS</label>
-      <input type="text" name="addressAGS" class="form-control">
-    </div>
+    <h3>Fall hinzufügen</h3>
+
+    <form method="post" class="row g-3">
+        <input type="hidden" name="case_id" value="{{ case.case_id if case else '' }}">
+
+        <div class="col-md-6">
+            <label class="form-label">Patienten-ID</label>
+            <input type="text" name="pat_id" class="form-control" required
+                   value="{{ case.pat_id if case else '' }}">
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">Fall-ID</label>
+            <input type="text" name="case_id_display" class="form-control" required
+                   value="{{ case.case_id if case else '' }}">
+        </div>
+
+        <hr/>
+
         <div class="col-md-4">
-      <label class="form-label">coverageType</label>
-      <select name="coverageType" class="form-select">
-        <option value="männlich">GKV</option>
-        <option value="weiblich">PKV</option>
-      </select>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Include Decision</label>
-      <select name="decsisionToInclude" class="form-select">
-        <option>Ja</option>
-        <option>Nein</option>
-      </select>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Molecular Board Decision Date</label>
-      <input type="date" name="molecularBoardDescisionDate" class="form-control">
-    </div>
-    <div class="col-md-4" id="rejectionDiv" style="display:none;">
-      <label class="form-label">Rejection Justification</label>
-      <input type="text" name="rejectionJustification" class="form-control">
-    </div>
+            <label class="form-label">Geschlecht</label>
+            <select name="gender" class="form-select">
+                <option value="male" {% if case and case.gender=='male' %}selected{% endif %}>männlich</option>
+                <option value="female" {% if case and case.gender=='female' %}selected{% endif %}>weiblich</option>
+                <option value="other" {% if case and case.gender=='other' %}selected{% endif %}>divers</option>
+                <option value="unknown" {% if case and case.gender=='unknown' %}selected{% endif %}>unbekannt</option>
+            </select>
+        </div>
 
-    <div class="col-md-4">
-      <label class="form-label">Main Diagnosis Date</label>
-      <input type="date" name="mainDiagnosis_date" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Main Diagnosis Code</label>
-      <input type="text" name="mainDiagnosis_code" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">ECOG Score</label>
-      <input type="number" name="ecog" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Germline Confirmed</label>
-      <select name="germlineConfirmed" class="form-select">
-        <option>Ja</option>
-        <option>Nein</option>
-      </select>
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Histology Code</label>
-      <input type="text" name="histology_code" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Topography Code</label>
-      <input type="text" name="topography_code" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">Library Type</label>
-      <input type="text" name="libraryType" class="form-control" value="wgs">
-    </div>
-      <h5>MV Consent</h5>
-<div class="col-md-4">
-  <label class="form-label">Presentation Date</label>
-  <input type="date" name="mvConsent_presentationDate" class="form-control">
-</div>
-<div class="col-md-4">
-  <label class="form-label">mvSequencing Scope Date</label>
-  <input type="date" name="mvConsent_scope_mvSequencing" class="form-control">
-</div>
-<div class="col-md-4">
-  <label class="form-label">reIdentification Scope Date</label>
-  <input type="date" name="mvConsent_scope_reIdentification" class="form-control">
-</div>
-<div class="col-md-4">
-  <label class="form-label">caseIdentification Scope Date</label>
-  <input type="date" name="mvConsent_scope_caseIdentification" class="form-control">
-</div>
+        <div class="col-md-4">
+            <label class="form-label">Geburtsdatum</label>
+            <input type="date" name="birth_date" class="form-control"
+                   value="{{ case.birth_date if case and case.birth_date else '' }}">
+        </div>
 
+        <div class="col-md-4">
+            <label class="form-label">Address AGS</label>
+            <input type="text" name="address_ags" class="form-control"
+                   value="{{ case.address_ags if case else '' }}">
+        </div>
 
-    <div class="col-12 mt-4">
-      <button type="submit" class="btn btn-primary">Speichern</button>
-    </div>
-  </form>
+        <div class="col-md-4">
+            <label class="form-label">Coverage Type</label>
+            <select name="coverage_type" class="form-select">
+                {% for ctype in ['GKV','PKV','BG','SEL','SOZ','GPV','PPV','BEI','SKT','UNK'] %}
+                <option value="{{ ctype }}" {% if case and case.coverage_type==ctype %}selected{% endif %}>{{ ctype }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <hr/>
+
+        <div class="col-md-4">
+            <label class="form-label">Molecular Board Decision Date</label>
+            <input type="date" name="molecular_board_decision_date" class="form-control"
+                   value="{{ case.molecular_board_decision_date if case and case.molecular_board_decision_date else '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Include Decision</label>
+            <select name="decision_to_include" class="form-select">
+                <option value="true" {% if case and case.decision_to_include %}selected{% endif %}>Ja</option>
+                <option value="false" {% if case and not case.decision_to_include %}selected{% endif %}>Nein</option>
+            </select>
+        </div>
+
+        <div class="col-md-4" id="rejectionDiv" style="display:none;">
+            <label class="form-label">Rejection Justification</label>
+            <select name="rejection_justification" class="form-select">
+                <option value="targetedDiagnosticRecommended" {% if case and
+                        case.rejection_justification=='targetedDiagnosticRecommended' %}selected{% endif %}>Gezielte
+                    Diagnostik empfohlen
+                </option>
+                <option value="probablyPsychosomaticIllness" {% if case and
+                        case.rejection_justification=='probablyPsychosomaticIllness' %}selected{% endif %}>Vermutlich
+                    psychosomatische Erkrankung
+                </option>
+                <option value="probablyCommonDisease" {% if case and
+                        case.rejection_justification=='probablyCommonDisease' %}selected{% endif %}>Vermutlich häufige
+                    Erkrankung
+                </option>
+                <option value="probablyNoGeneticCause" {% if case and
+                        case.rejection_justification=='probablyNoGeneticCause' %}selected{% endif %}>Vermutlich keine
+                    genetische Ursache
+                </option>
+                <option value="otherReason" {% if case and case.rejection_justification=='otherReason' %}selected{%
+                        endif %}>Anderer Grund
+                </option>
+            </select>
+        </div>
+
+        <hr/>
+
+        <div class="col-md-4">
+            <label class="form-label">Main Diagnosis Date</label>
+            <input type="date" name="main_diagnosis_date" class="form-control"
+                   value="{{ case.main_diagnosis_date if case and case.main_diagnosis_date else '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Main Diagnosis Code</label>
+            <input type="text" name="main_diagnosis_code" class="form-control"
+                   value="{{ case.main_diagnosis_code if case else '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">ECOG Score</label>
+            <select name="ecog" class="form-select">
+                {% for score in ['0','1','2','3','4','5','unknown','notApplicable'] %}
+                <option value="{{ score }}" {% if case and case.ecog==score %}selected{% endif %}>{{ score }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Germline Confirmed</label>
+            <select name="germline_confirmed" class="form-select">
+                <option value="true" {% if case and case.germline_confirmed %}selected{% endif %}>Ja</option>
+                <option value="false" {% if case and not case.germline_confirmed %}selected{% endif %}>Nein</option>
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Histology Code</label>
+            <input type="text" name="histology_code" class="form-control"
+                   value="{{ case.histology_code if case else '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Topography Code</label>
+            <input type="text" name="topography_code" class="form-control"
+                   value="{{ case.topography_code if case else '' }}">
+        </div>
+
+        <hr/>
+
+        <div class="col-md-4">
+            <label class="form-label">Library Type</label>
+            <select name="library_type" class="form-select">
+                {% for lib in ['wes','wgs','wgs_lr','panel','none'] %}
+                <option value="{{ lib }}" {% if case and case.library_type==lib %}selected{% endif %}>{{ lib }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <hr/>
+
+        <h5>MV Consent</h5>
+
+        <div class="row mb-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Presentation Date</label>
+                <input type="date" name="mv_consent_presentation_date" class="form-control"
+                       value="{{ case.mv_consent.presentationDate if case and case.mv_consent else '' }}">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Version</label>
+                <select name="mv_consent_version" class="form-select">
+                    <option value="v1" {% if case and case.mv_consent_version=='v1' %}selected{% endif %}>Einwilligung
+                        Modellvorhaben 64e v1 (2025-03-03)
+                    </option>
+                    <option value="v2" {% if case and case.mv_consent_version=='v2' %}selected{% endif %}>Einwilligung
+                        Modellvorhaben 64e v2 (2025-06-01)
+                    </option>
+                </select>
+            </div>
+        </div>
+
+        {% for scope in ['mvSequencing','reIdentification','caseIdentification'] %}
+        <div class="row mb-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-0"><b>{{ scope }}</b></label>
+            </div>
+            <div class="col-md-4">
+                <input type="date" name="mv_consent_scope_{{ scope }}_date" class="form-control"
+                       value="{{ case.mv_consent.scope[loop.index0].date if case and case.mv_consent else '' }}">
+            </div>
+            <div class="col-md-3">
+                <select name="mv_consent_scope_{{ scope }}_decision" class="form-select">
+                    <option value="permit" {% if case and case.mv_consent and
+                            case.mv_consent.scope[loop.index0].type=='permit' %}selected{% endif %}>permit
+                    </option>
+                    <option value="deny" {% if case and case.mv_consent and
+                            case.mv_consent.scope[loop.index0].type=='deny' %}selected{% endif %}>deny
+                    </option>
+                </select>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="col-12 mt-4 d-flex gap-2">
+            <button type="submit" name="is_finalized" value="false" class="btn btn-primary">Speichern</button>
+            <button type="submit" name="is_finalized" value="true" class="btn btn-success">Abschließen</button>
+        </div>
+    </form>
 </div>
 
 <script>
-const selectInclude = document.querySelector('select[name="decsisionToInclude"]');
-const rejectionDiv = document.getElementById('rejectionDiv');
-selectInclude.addEventListener('change', () => {
-    rejectionDiv.style.display = selectInclude.value === "Nein" ? "block" : "none";
-});
+    const selectInclude = document.querySelector('select[name="decision_to_include"]');
+    const rejectionDiv = document.getElementById('rejectionDiv');
+    selectInclude.addEventListener('change', () => {
+        rejectionDiv.style.display = selectInclude.value === "false" ? "block" : "none";
+    });
 </script>
-</body>
-</html>
+{% endblock %}

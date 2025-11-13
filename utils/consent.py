@@ -13,7 +13,7 @@ def get_session():
 
 def get_research_consent(patid: str):
     token = get_keycloak_token()
-    url = f"https://bc.diz.med.uni-muenchen.de/fhir/Consent?patient={patid}"
+    url = f"{os.environ["DIZ_CONSENT_ENDPOINT"]}{patid}"
     session = get_session()
     headers = {"Authorization": f"Bearer {token}"}
     response = session.get(url, headers=headers)

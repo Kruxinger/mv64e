@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: onco_db
+    environment:
+      POSTGRES_USER: onco_user
+      POSTGRES_PASSWORD: onco_pass
+      POSTGRES_DB: onco
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db_init.sql:/docker-entrypoint-initdb.d/db_init.sql:ro
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: onco_app
+    depends_on:
+      - db
+    environment:
+      POSTGRES_USER: onco_user
+      POSTGRES_PASSWORD: onco_pass
+      POSTGRES_DB: onco
+      POSTGRES_HOST: db
+      RUNNING_IN_DOCKER: "true"
+    volumes:
+      - ./app:/app      # Hot Reload
+    command: python app.py
+    ports:
+      - "8000:8000"     # wenn z. B. Flask oder FastAPI läuft
+    restart: unless-stopped
+
+volumes:
+  db_data:
+

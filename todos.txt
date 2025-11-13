@@ -1,0 +1,9 @@
+mvConsent Version:
+    - in add_case / mod anpassen
+    - als db übernehmen
+
+mvConsent scopes bezeichner
+
+broadConsent:
+    - wenn von DIZ [] -> Default setzen
+    - Default erstellen

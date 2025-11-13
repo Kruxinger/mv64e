@@ -1,4 +1,4 @@
--- Fälle-Tabelle mit auto-increment ID
+
 CREATE TABLE IF NOT EXISTS cases (
     id SERIAL PRIMARY KEY,
     case_id TEXT NOT NULL,
@@ -6,13 +6,13 @@ CREATE TABLE IF NOT EXISTS cases (
     gender TEXT,
     birthDate DATE,
     addressAGS TEXT,
-    decsisionToInclude BOOLEAN,
+    decisionToInclude BOOLEAN,
     molecularBoardDescisionDate DATE,
     rejectionJustification TEXT,
     mainDiagnosis_date DATE,
     mainDiagnosis_code TEXT,
     coverageType TEXT,
-    ecog INTEGER,
+    ecog TEXT,
     germlineConfirmed BOOLEAN,
     histology_code TEXT,
     topography_code TEXT,
@@ -32,10 +32,15 @@ CREATE TABLE IF NOT EXISTS cases (
     tanC TEXT,
     mvConsent JSONB,
     researchConsent JSONB,
-    transmitted BOOLEAN DEFAULT FALSE
+    transmitted BOOLEAN DEFAULT FALSE,
+    is_finalized BOOLEAN DEFAULT FALSE
 );
 
--- Neue Tabelle für Übertragungen
+
+ALTER TABLE cases
+ALTER COLUMN researchConsent DROP NOT NULL;
+
+
 CREATE TABLE IF NOT EXISTS transmissions (
     id SERIAL PRIMARY KEY,
     case_id TEXT NOT NULL,
@@ -43,14 +48,14 @@ CREATE TABLE IF NOT EXISTS transmissions (
     request JSONB,
     response JSONB
 );
--- Konstanten-Tabelle mit auto-increment ID
+
 CREATE TABLE IF NOT EXISTS constants (
     id SERIAL PRIMARY KEY,
     key TEXT UNIQUE NOT NULL,
     value TEXT NOT NULL
 );
 
--- Beispielwerte initial befüllen
+
 INSERT INTO constants (key, value) VALUES
 ('submission.type', 'initial'),
 ('submission.submitterId', '999950000'),
@@ -66,11 +71,6 @@ INSERT INTO constants (key, value) VALUES
 ('topography.version', 'icdo3topo.rev1de');
 
 
--- researchConsent darf NULL sein
-ALTER TABLE cases
-ALTER COLUMN researchConsent DROP NOT NULL;
-
--- Log-Tabelle für System- und Fehlernachrichten
 CREATE TABLE IF NOT EXISTS logs (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ DEFAULT NOW(),
@@ -78,6 +78,13 @@ CREATE TABLE IF NOT EXISTS logs (
     case_id TEXT,
     type TEXT CHECK (type IN ('info', 'error')),
     text TEXT
+);
+
+CREATE TABLE IF NOT EXISTS service_status (
+    id SERIAL PRIMARY KEY,
+    service_name TEXT NOT NULL,
+    status BOOLEAN NOT NULL,
+    last_checked TIMESTAMP NOT NULL DEFAULT now()
 );
 
 
