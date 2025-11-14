@@ -12,7 +12,7 @@ def get_session():
     return session
 
 def get_research_consent(patid: str):
-    token = get_keycloak_token()
+    token = get_keycloak_token(os.environ["KEYCLOAK_DIZ_CLIENT_ID"])
     url = f"{os.environ["DIZ_CONSENT_ENDPOINT"]}{patid}"
     session = get_session()
     headers = {"Authorization": f"Bearer {token}"}

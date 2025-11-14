@@ -1,11 +1,13 @@
+version: "3.9"
+
 services:
   db:
     image: postgres:15
     container_name: onco_db
     environment:
-      POSTGRES_USER: onco_user
-      POSTGRES_PASSWORD: onco_pass
-      POSTGRES_DB: onco
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -26,13 +28,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      POSTGRES_USER: onco_user
-      POSTGRES_PASSWORD: onco_pass
-      POSTGRES_DB: onco
-      POSTGRES_HOST: db
-      RUNNING_IN_DOCKER: "true"
-      PYTHONUNBUFFERED: 1
+    env_file:
+      - .env
     volumes:
       - .:/app
     command: python app.py

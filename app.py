@@ -10,16 +10,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Third-party libraries
 import requests
-from flask import Flask, render_template, request, redirect, flash, url_for, abort
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, request, redirect, flash, url_for, session
 from sqlalchemy import func
 
 # Local modules
 from utils.check_services import check_services
-from utils.generate_test_data import generate_dummy_data
+from utils.generate_test_data import generate_test_data
 from utils.logging import log_entry
-from utils.tan_service import generate_tan
-from utils.consent import get_research_consent
 from utils.tasks import fetch_research_consent_async, generate_tan_async
 from utils.transmit_utils import build_oncology_payload
 
@@ -27,6 +24,8 @@ from utils.transmit_utils import build_oncology_payload
 from models import db, Case, Transmission, Constant, Log, ServiceStatus
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme")
 
 executor = ThreadPoolExecutor(max_workers=4)
 
@@ -43,6 +42,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+
 
 @app.context_processor
 def inject_current_year():
@@ -69,9 +69,9 @@ def serialize_model_dates(obj):
 
 
 def get_constants():
-    """Read constants table into a dict {key: value}"""
-    rows = Constant.query.order_by(Constant.key).all()
-    return {r.key: r.value for r in rows}
+    rows = Constant.query.all()
+    return {row.key: row.value for row in rows}
+
 
 
 def update_case_field(case_id, field, value):
@@ -113,6 +113,29 @@ def periodic_service_check(interval_hours=4):
 # ---------------------
 # Routes
 # ---------------------
+
+# ---- Login-Seite ----
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if password == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            next_url = session.pop('next', url_for("index"))
+            return redirect(next_url)
+        else:
+            return render_template("login.html", error="Falsches Passwort")
+    return render_template("login.html")
+
+# ---- Before Request Hook ----
+@app.before_request
+def require_login():
+    if request.endpoint in ("login", "static"):
+        return  # login-Seite und statische Dateien ausnehmen
+    if not session.get('logged_in'):
+        session['next'] = request.path
+        return redirect(url_for("login"))
+
 @app.route("/cases")
 def view_cases():
     cases = Case.query.order_by(Case.id.desc()).all()
@@ -225,18 +248,17 @@ def add_case():
             histology_code=histology_code,
             topography_code=topography_code,
             library_type=library_type,
-            submission_type=consts.get("submission.type"),
-            submission_submitter_id=consts.get("submission.submitterId"),
-            submission_genomic_data_center_id=consts.get("submission.genomicDataCenterId"),
-            submission_clinical_data_node_id=consts.get("submission.clinicalDataNodeId"),
-            submission_disease_type=consts.get("submission.diseaseType"),
-            mv_consent_version=consts.get("mvConsent.version"),
-            main_diagnosis_system=consts.get("mainDiagnosis.system"),
-            main_diagnosis_version=consts.get("mainDiagnosis.version"),
-            histology_system=consts.get("histology.system"),
-            histology_version=consts.get("histology.version"),
-            topography_system=consts.get("topography.system"),
-            topography_version=consts.get("topography.version"),
+            submission_type=consts.get("submission_type"),
+            submission_submitter_id=consts.get("submission_submitterId"),
+            submission_genomic_data_center_id=consts.get("submission_genomicDataCenterId"),
+            submission_clinical_data_node_id=consts.get("submission_clinicalDataNodeId"),
+            submission_disease_type=consts.get("submission_diseaseType"),
+            main_diagnosis_system=consts.get("mainDiagnosis_system"),
+            main_diagnosis_version=consts.get("mainDiagnosis_version"),
+            histology_system=consts.get("histology_system"),
+            histology_version=consts.get("histology_version"),
+            topography_system=consts.get("topography_system"),
+            topography_version=consts.get("topography_version"),
             mv_consent=mv_consent_json,
             research_consent=None,
             coverage_type=coverage_type,
@@ -434,9 +456,28 @@ def view_logs():
 
 
 
-# ---------------------
-# App entrypoint
-# ---------------------
+def init_constants():
+    REQUIRED = {
+        'submission_type': 'initial',
+        'submission_submitterId': '999950000',
+        'submission_genomicDataCenterId': 'GRZHD0003',
+        'submission_clinicalDataNodeId': 'KDKHD0006',
+        'submission_diseaseType': 'oncological',
+        'mainDiagnosis_system': 'ICD-10-GM',
+        'mainDiagnosis_version': 'icd10.gm-2019-10-04',
+        'histology_system': 'ICD-O-3-M',
+        'histology_version': 'icdo3morph.rev1de',
+        'topography_system': 'ICD-O-3-T',
+        'topography_version': 'icdo3topo.rev1de'
+    }
+
+    for key, value in REQUIRED.items():
+        existing = Constant.query.filter_by(key=key).first()
+        if not existing:
+            db.session.add(Constant(key=key, value=value))
+
+    db.session.commit()
+
 if __name__ == "__main__":
     host = os.environ.get("FLASK_RUN_HOST", "0.0.0.0")
     port = int(os.environ.get("FLASK_RUN_PORT", 8000))
@@ -444,9 +485,13 @@ if __name__ == "__main__":
 
     # ensure tables exist
     with app.app_context():
+        if debug:
+            db.drop_all()
         db.create_all()
-
+        if debug:
+            generate_test_data()
         periodic_service_check()
+        init_constants()
 
     print(f"Starting OncoApp on {host}:{port} (debug={debug})")
     app.run(host=host, port=port, debug=debug)

@@ -4,31 +4,22 @@
 
 {% block content %}
 <div class="container-fluid p-0">
-    <h3 class="m-2">Alle Cases</h3>
+    <h3 class="m-2 d-flex justify-content-between">
+        Alle Cases
+        <button id="downloadCsvBtn" class="btn btn-sm btn-outline-primary me-2">CSV herunterladen</button>
+    </h3>
     <div id="casesGrid"></div>
 </div>
 
-<!-- Grid.js CSS & JS -->
 <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
 <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
 
 <style>
-    /* kompakte Tabelle */
-    .gridjs-container {
-        font-size: 0.75rem; /* kleiner */
-    }
-    .gridjs-table {
-        margin: 0; /* keine Ränder */
-    }
-    .gridjs-header, .gridjs-th, .gridjs-td {
-        padding: 2px 4px; /* kompakte Zellen */
-    }
-    .gridjs-pagination {
-        font-size: 0.75rem;
-    }
-    .gridjs-th {
-    white-space: nowrap;
-}
+    .gridjs-container { font-size: 0.75rem; }
+    .gridjs-table { margin: 0; }
+    .gridjs-header, .gridjs-th, .gridjs-td { padding: 2px 4px; }
+    .gridjs-pagination { font-size: 0.75rem; }
+    .gridjs-th { white-space: nowrap; }
 </style>
 
 <script>
@@ -36,7 +27,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const columns = {{ columns | tojson }};
     const data = {{ cases | tojson }};
 
-    // transformiere data zu Array of Arrays für Grid.js
     const rows = data.map(row => columns.map(col => row[col]));
 
     new gridjs.Grid({
@@ -45,16 +35,53 @@ document.addEventListener("DOMContentLoaded", function() {
             formatter: (cell) => gridjs.html(`<span title="${cell}">${cell}</span>`)
         })),
         data: rows,
-        pagination: {
-            enabled: true,
-            limit: 10  // nur 10 Zeilen pro Seite
-        },
+        pagination: { enabled: true, limit: 10 },
         search: true,
         sort: true,
         resizable: true,
         width: "100%",
         autoWidth: true
     }).render(document.getElementById("casesGrid"));
+
+    // ------------------------------------------
+    // CSV EXPORT
+    // ------------------------------------------
+    document.getElementById("downloadCsvBtn").addEventListener("click", function () {
+        // Header
+        const csvRows = [];
+        csvRows.push(columns.join(","));
+
+        // Rows
+        for (const row of data) {
+            const line = columns.map(col => {
+                let v = row[col] ?? "";
+                // Escape
+                if (typeof v === "string") {
+                    v = v.replace(/"/g, '""');
+                    if (v.includes(",") || v.includes("\n") || v.includes('"')) {
+                        v = `"${v}"`;
+                    }
+                }
+                return v;
+            }).join(",");
+            csvRows.push(line);
+        }
+
+        // Excel-kompatible BOM
+        const csvContent = "\uFEFF" + csvRows.join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "cases_export.csv";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
 });
 </script>
 {% endblock %}

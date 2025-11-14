@@ -16,7 +16,7 @@ def get_session():
     if proxy:
         session.proxies = {"http": proxy, "https": proxy}
     session.verify = False
-    session.headers.update({"Authorization": f"Bearer {get_keycloak_token()}"})
+    session.headers.update({"Authorization": f"Bearer {get_keycloak_token(os.environ["KEYCLOAK_GPAS_CLIENT_ID"])}"})
     return session
 
 def generate_tan(pat_id: str) -> str:
