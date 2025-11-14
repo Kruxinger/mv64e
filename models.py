@@ -29,7 +29,6 @@ class Case(db.Model):
     submission_genomic_data_center_id = db.Column(db.String)
     submission_clinical_data_node_id = db.Column(db.String)
     submission_disease_type = db.Column(db.String)
-    mv_consent_version = db.Column(db.String)
     main_diagnosis_system = db.Column(db.String)
     main_diagnosis_version = db.Column(db.String)
     histology_system = db.Column(db.String)

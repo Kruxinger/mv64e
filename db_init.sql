@@ -57,18 +57,17 @@ CREATE TABLE IF NOT EXISTS constants (
 
 
 INSERT INTO constants (key, value) VALUES
-('submission.type', 'initial'),
-('submission.submitterId', '999950000'),
-('submission.genomicDataCenterId', 'GRZHD0003'),
-('submission.clinicalDataNodeId', 'KDKHD0006'),
-('submission.diseaseType', 'oncological'),
-('mvConsent.version', 'Einwilligung Modellvorhaben 64e v1 (2025-03-03)'),
-('mainDiagnosis.system', 'ICD-10-GM'),
-('mainDiagnosis.version', 'icd10.gm-2019-10-04'),
-('histology.system', 'ICD-O-3-M'),
-('histology.version', 'icdo3morph.rev1de'),
-('topography.system', 'ICD-O-3-T'),
-('topography.version', 'icdo3topo.rev1de');
+('submission_type', 'initial'),
+('submission_submitterId', '999950000'),
+('submission_genomicDataCenterId', 'GRZHD0003'),
+('submission_clinicalDataNodeId', 'KDKHD0006'),
+('submission_diseaseType', 'oncological'),
+('mainDiagnosis_system', 'ICD-10-GM'),
+('mainDiagnosis_version', 'icd10.gm-2019-10-04'),
+('histology_system', 'ICD-O-3-M'),
+('histology_version', 'icdo3morph.rev1de'),
+('topography_system', 'ICD-O-3-T'),
+('topography_version', 'icdo3topo.rev1de');
 
 
 CREATE TABLE IF NOT EXISTS logs (
