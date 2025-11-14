@@ -5,7 +5,7 @@ import requests
 
 _TOKEN_CACHE = {"value": None, "expires": 0}
 
-def get_keycloak_token(client_id):
+def get_keycloak_token(client_id, url):
     """Fetch or reuse a Keycloak token with simple in-memory caching."""
     if _TOKEN_CACHE["value"] and time.time() < _TOKEN_CACHE["expires"]:
         return _TOKEN_CACHE["value"]
@@ -22,7 +22,7 @@ def get_keycloak_token(client_id):
     verify = False
 
     response = requests.post(
-        os.environ["KEYCLOAK_TOKEN_URL"],
+        url,
         data=data,
         headers=headers,
         proxies=proxies,

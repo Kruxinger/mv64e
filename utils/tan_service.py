@@ -16,7 +16,7 @@ def get_session():
     if proxy:
         session.proxies = {"http": proxy, "https": proxy}
     session.verify = False
-    session.headers.update({"Authorization": f"Bearer {get_keycloak_token(os.environ["KEYCLOAK_GPAS_CLIENT_ID"])}"})
+    session.headers.update({"Authorization": f"Bearer {get_keycloak_token(os.environ["KEYCLOAK_GPAS_CLIENT_ID"],os.environ["KEYCLOAK_GPAS_TOKEN_URL"])}"})
     return session
 
 def generate_tan(pat_id: str) -> str:
@@ -25,7 +25,7 @@ def generate_tan(pat_id: str) -> str:
     transport = Transport(session=session)
     client = Client(GPAS_WSDL, transport=transport)
     try:
-        result = client.service.getPseudonymFor(value=pat_id, domainName=DOMAIN_NAME)
+        result = client.service.getPseudonymFor(value=pat_id, domainName="arbeitssnummer")
         tan = client.service.createPseudonymFor(value=result, domainName="vorgangsnummer")
         return tan
     except Fault as e:
