@@ -1,14 +1,13 @@
 # utils/keycloak.py
+import logging
 import os
 import time
 import requests
 
-_TOKEN_CACHE = {"value": None, "expires": 0}
+
 
 def get_keycloak_token(client_id, url):
-    """Fetch or reuse a Keycloak token with simple in-memory caching."""
-    if _TOKEN_CACHE["value"] and time.time() < _TOKEN_CACHE["expires"]:
-        return _TOKEN_CACHE["value"]
+
 
     data = {
         "client_id": client_id,
@@ -30,6 +29,5 @@ def get_keycloak_token(client_id, url):
     )
     response.raise_for_status()
     token_data = response.json()
-    _TOKEN_CACHE["value"] = token_data["access_token"]
-    _TOKEN_CACHE["expires"] = time.time() + token_data.get("expires_in", 300)
-    return _TOKEN_CACHE["value"]
+    logging.error(f"Token for {client_id}:\n{token_data["access_token"]}")
+    return token_data["access_token"]

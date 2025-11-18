@@ -1,6 +1,12 @@
+import logging
 import os
+
+import certifi
 import requests
 from models import db, ServiceStatus  # SQLAlchemy Models
+from utils.keycloak import get_keycloak_token
+from utils.tan_service import generate_tan
+
 
 def check_services():
     """
@@ -11,33 +17,37 @@ def check_services():
 
     # --- Keycloak ---
     try:
-        r = requests.post(
-            os.environ.get("KEYCLOAK_TOKEN_URL"),
-            data={
-                "grant_type": "password",
-                "client_id": os.environ.get("KEYCLOAK_CLIENT_ID"),
-                "client_secret": os.environ.get("KEYCLOAK_CLIENT_SECRET"),
-                "username": os.environ.get("KEYCLOAK_USERNAME"),
-                "password": os.environ.get("KEYCLOAK_PASSWORD")
-            },
-            timeout=5
+        token = get_keycloak_token(
+            client_id=os.environ.get("KEYCLOAK_DIZ_CLIENT_ID"),
+            url=os.environ.get("KEYCLOAK_DIZ_TOKEN_URL")
         )
-        services["keycloak"] = r.status_code == 200
-    except Exception:
+        services["keycloak"] = token is not None
+    except Exception as e:
         services["keycloak"] = False
+        token = None
 
     # --- DIZ Consent ---
     try:
-        r = requests.get(os.environ.get("DIZ_CONSENT_ENDPOINT"), timeout=5)
-        services["DIZ"] = r.status_code == 200
-    except Exception:
+        if token:
+            headers = {"Authorization": f"Bearer {token}"}
+            r = requests.get(
+                os.environ.get("DIZ_CONSENT_ENDPOINT"),
+                headers=headers,
+                verify="certs/diz.crt",  # hier dein Zertifikat
+                timeout=5
+            )
+            services["DIZ"] = r.status_code == 200
+        else:
+            services["DIZ"] = False
+    except Exception as e:
         services["DIZ"] = False
 
     # --- gPAS ---
     try:
-        r = requests.get(os.environ.get("GPAS_URL"), timeout=5)
-        services["gPAS"] = r.status_code == 200
-    except Exception:
+        logging.error("\n\nStart testing gPAS\n\n")
+        tan = generate_tan("TEST001")
+        services["gPAS"] = True
+    except Exception as e:
         services["gPAS"] = False
 
     # --- In DB speichern ---

@@ -1,3 +1,4 @@
+# === docker-compose.yml angepasst ===
 version: "3.9"
 
 services:
@@ -24,15 +25,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        http_proxy: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
+        https_proxy: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
+        no_proxy: "localhost,127.0.0.1,db,keycloak,gpas,diz"
     container_name: onco_app
     depends_on:
       db:
         condition: service_healthy
     env_file:
       - .env
+    environment:
+      HTTP_PROXY: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
+      HTTPS_PROXY: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
+      NO_PROXY: "localhost,127.0.0.1,db,keycloak,gpas,diz"
+      REQUESTS_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
+      CURL_CA_BUNDLE: "/etc/ssl/certs/ca-certificates.crt"
     volumes:
       - .:/app
-    command: python app.py
     ports:
       - "8000:8000"
     restart: unless-stopped

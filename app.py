@@ -1,5 +1,5 @@
 # app.py (SQLAlchemy-Variante)
-
+import logging
 # Standard library
 from datetime import datetime, timedelta, date
 import json
@@ -163,7 +163,7 @@ def view_cases():
 def dashboard():
     # --- Services ---
     current_status = check_services()  # {service_name: True/False}
-
+    logging.error(current_status)
     # --- Historical service_status (last 4 weeks) ---
     four_weeks_ago = datetime.now() - timedelta(weeks=4)
     historical_rows = (
@@ -502,11 +502,11 @@ if __name__ == "__main__":
 
     # ensure tables exist
     with app.app_context():
-        if debug:
-            db.drop_all()
+        # if debug:
+        #     db.drop_all()
         db.create_all()
-        if debug:
-            generate_test_data()
+        # if debug:
+        #     generate_test_data()
         periodic_service_check()
         init_constants()
 

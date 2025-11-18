@@ -4,18 +4,18 @@ from zeep.transports import Transport
 from zeep.exceptions import Fault
 from requests import Session
 import os
+import logging
 from utils.keycloak import get_keycloak_token
 
 GPAS_URL = os.environ.get("GPAS_URL")
 GPAS_WSDL = os.environ.get("GPAS_WSDL")
-DOMAIN_NAME = os.environ.get("GPAS_DOMAIN", "arbeitsnummer")
 
 def get_session():
     session = Session()
     proxy = os.environ.get("PROXY")
     if proxy:
         session.proxies = {"http": proxy, "https": proxy}
-    session.verify = False
+    session.verify = "certs/gpas.crt"
     session.headers.update({"Authorization": f"Bearer {get_keycloak_token(os.environ["KEYCLOAK_GPAS_CLIENT_ID"],os.environ["KEYCLOAK_GPAS_TOKEN_URL"])}"})
     return session
 
@@ -25,7 +25,7 @@ def generate_tan(pat_id: str) -> str:
     transport = Transport(session=session)
     client = Client(GPAS_WSDL, transport=transport)
     try:
-        result = client.service.getPseudonymFor(value=pat_id, domainName="arbeitssnummer")
+        result = client.service.getPseudonymFor(value=pat_id, domainName="arbeitsnummer")
         tan = client.service.createPseudonymFor(value=result, domainName="vorgangsnummer")
         return tan
     except Fault as e:
