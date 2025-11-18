@@ -7,6 +7,8 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from flask import send_from_directory
+import os
 
 # Third-party libraries
 import requests
@@ -121,7 +123,7 @@ def login():
         password = request.form.get("password", "")
         if password == ADMIN_PASSWORD:
             session['logged_in'] = True
-            next_url = session.pop('next', url_for("index"))
+            next_url = session.pop('next', url_for("dashboard"))
             return redirect(next_url)
         else:
             return render_template("login.html", error="Falsches Passwort")
@@ -130,11 +132,22 @@ def login():
 # ---- Before Request Hook ----
 @app.before_request
 def require_login():
-    if request.endpoint in ("login", "static"):
+    if request.endpoint in ("login", "static", "favicon"):
         return  # login-Seite und statische Dateien ausnehmen
     if not session.get('logged_in'):
         session['next'] = request.path
         return redirect(url_for("login"))
+
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'favicon.ico',
+        mimetype='image/vnd.microsoft.icon'
+    )
+
 
 @app.route("/cases")
 def view_cases():
@@ -187,6 +200,10 @@ def dashboard():
         transmitted_percent=transmitted_percent
     )
 
+@app.route("/logout")
+def logout():
+    session.clear()           # oder: session.pop("logged_in", None)
+    return redirect(url_for("login"))
 
 @app.route("/", methods=["GET", "POST"])
 def add_case():
