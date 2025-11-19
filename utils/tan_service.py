@@ -30,6 +30,7 @@ def generate_tan(case_id: str) -> str:
     try:
         result = client.service.getOrCreatePseudonymFor(value=case_id, domainName="arbeitsnummer")
         tan = client.service.createPseudonymFor(value=result, domainName="vorgangsnummer")
+        log_entry(case_id, "", "info", "TAN created properly")
         return tan
     except Fault as e:
         log_entry(case_id,"", "error",e.message)
