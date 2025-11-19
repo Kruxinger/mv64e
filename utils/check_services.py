@@ -44,7 +44,6 @@ def check_services():
 
     # --- gPAS ---
     try:
-        logging.error("\n\nStart testing gPAS\n\n")
         tan = generate_tan("TEST001")
         services["gPAS"] = True
     except Exception as e:

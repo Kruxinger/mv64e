@@ -163,7 +163,6 @@ def view_cases():
 def dashboard():
     # --- Services ---
     current_status = check_services()  # {service_name: True/False}
-    logging.error(current_status)
     # --- Historical service_status (last 4 weeks) ---
     four_weeks_ago = datetime.now() - timedelta(weeks=4)
     historical_rows = (

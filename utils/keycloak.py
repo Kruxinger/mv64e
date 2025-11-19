@@ -29,5 +29,4 @@ def get_keycloak_token(client_id, url):
     )
     response.raise_for_status()
     token_data = response.json()
-    logging.error(f"Token for {client_id}:\n{token_data["access_token"]}")
     return token_data["access_token"]
