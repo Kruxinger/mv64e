@@ -1,6 +1,8 @@
 # utils/logging.py
 import psycopg2
 import os
+from typing import Literal
+
 from datetime import datetime
 
 DB_HOST = os.environ.get("POSTGRES_HOST", "db")
@@ -16,7 +18,7 @@ def get_conn():
         password=DB_PASSWORD
     )
 
-def log_entry(case_id, pat_id, level, message):
+def log_entry(case_id, pat_id, level: Literal["info","error","warning"], message):
     """Schreibt einen Logeintrag in die Datenbank."""
     conn = get_conn()
     cur = conn.cursor()

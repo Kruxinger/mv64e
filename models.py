@@ -73,7 +73,7 @@ class Log(db.Model):
     __tablename__ = "logs"
 
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.now)
     pat_id = db.Column(db.String)
     case_id = db.Column(db.String)
     type = db.Column(db.String, nullable=False)  # info / error
@@ -89,7 +89,7 @@ class ServiceStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     service_name = db.Column(db.String, nullable=False)
     status = db.Column(db.Boolean, nullable=False)
-    last_checked = db.Column(db.DateTime, default=datetime.utcnow)
+    last_checked = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return f"<ServiceStatus {self.service_name}: {self.status}>"
