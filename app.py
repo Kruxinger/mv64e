@@ -377,21 +377,19 @@ def edit_case(case_id):
         }
 
         case.mv_consent = mv_consent_json
-
-        db.session.commit()
-
-        # ---- Logging & Hintergrundjobs ----
-        log_entry(case.case_id, pat_id, "info", f"Case {case.case_id} wurde aktualisiert")
-        executor.submit(fetch_research_consent_async, case.case_id, pat_id)
-        executor.submit(generate_tan_async, case.case_id, pat_id)
-
+        try:
+            db.session.commit()
+            log_entry(case.case_id, pat_id, "info", f"Case edited")
+            executor.submit(fetch_research_consent_async, case.case_id, pat_id)
+            executor.submit(generate_tan_async, case.case_id, pat_id)
+        except Exception as e:
+            log_entry(case.case_id, pat_id, "error", f"Could not commit changes: {str(e)}")
         return redirect("/drafts")
 
-    else:
-        # GET: render edit form
-        case = Case.query.filter_by(case_id=case_id).first_or_404()
-        case_serialized = serialize_model_dates(case)
-        return render_template("add_case.html", case=case_serialized)
+
+    case = Case.query.filter_by(case_id=case_id).first_or_404()
+    case_serialized = serialize_model_dates(case)
+    return render_template("add_case.html", case=case_serialized)
 
 
 
