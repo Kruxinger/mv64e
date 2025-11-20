@@ -157,7 +157,8 @@
         <div class="row mb-3 align-items-end">
             <div class="col-md-4">
                 <label class="form-label">Presentation Date</label>
-                <input type="date" name="mv_consent_presentation_date" class="form-control"
+                <input type="date" id="mv_consent_presentation_date" name="mv_consent_presentation_date"
+                       class="form-control"
                        value="{{ case.mv_consent.presentationDate if case and case.mv_consent else '' }}">
             </div>
 
@@ -180,7 +181,8 @@
                 <label class="form-label mb-0"><b>{{ scope }}</b></label>
             </div>
             <div class="col-md-4">
-                <input type="date" name="mv_consent_scope_{{ scope }}_date" class="form-control"
+                <input type="date" id="mv_consent_scope_{{ scope }}_date" name="mv_consent_scope_{{ scope }}_date"
+                       class="form-control"
                        value="{{ case.mv_consent.scope[loop.index0].date if case and case.mv_consent else '' }}">
             </div>
             <div class="col-md-3">
@@ -204,10 +206,27 @@
 </div>
 
 <script>
-    const selectInclude = document.querySelector('select[name="decision_to_include"]');
-    const rejectionDiv = document.getElementById('rejectionDiv');
-    selectInclude.addEventListener('change', () => {
-        rejectionDiv.style.display = selectInclude.value === "false" ? "block" : "none";
+    document.addEventListener('DOMContentLoaded', function() {
+const presentationInput = document.getElementById('mv_consent_presentation_date');
+const scopes = ['mvSequencing','reIdentification','caseIdentification'];
+
+presentationInput.addEventListener('change', function() {
+    const val = this.value;
+    if (!val) return;
+
+    scopes.forEach(scope => {
+        const scopeInput = document.getElementById(`mv_consent_scope_${scope}_date`);
+        if (scopeInput && !scopeInput.value) {
+            scopeInput.value = val; // automatisch übernehmen, falls leer
+        }
     });
+});
+});
+const selectInclude = document.querySelector('select[name="decision_to_include"]');
+const rejectionDiv = document.getElementById('rejectionDiv');
+selectInclude.addEventListener('change', () => {
+    rejectionDiv.style.display = selectInclude.value === "false" ? "block" : "none";
+});
+
 </script>
 {% endblock %}

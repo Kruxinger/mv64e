@@ -37,7 +37,7 @@ class Case(db.Model):
     topography_version = db.Column(db.String)
     tan_c = db.Column(db.String)
     mv_consent = db.Column(db.JSON)
-    research_consent = db.Column(db.JSON)
+    research_consent = db.Column(db.Array)
     transmitted = db.Column(db.Boolean, default=False)
     is_finalized = db.Column(db.Boolean, default=False)
 

@@ -7,7 +7,7 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from flask import send_from_directory
+from flask import send_from_directory, jsonify
 import os
 
 # Third-party libraries
@@ -286,8 +286,8 @@ def add_case():
 
         # ---- Logging & Hintergrundjobs ----
         log_entry(case_id, pat_id, "info", f"Case {case_id} wurde angelegt")
-        executor.submit(fetch_research_consent_async, case_id, pat_id)
-        executor.submit(generate_tan_async, case_id, pat_id)
+        executor.submit(fetch_research_consent_async, new_case.id, pat_id)
+        executor.submit(generate_tan_async, new_case.id, case_id)
 
         return redirect("/")
 
@@ -300,9 +300,9 @@ def reload_consent_tan():
     cases = Case.query.filter(Case.transmitted.is_(False)).all()
     for c in cases:
         if c.research_consent is None:
-            executor.submit(fetch_research_consent_async, c.case_id, c.pat_id)
+            executor.submit(fetch_research_consent_async, c.id, c.pat_id)
         if getattr(c, "tan_c", None) is None:
-            executor.submit(generate_tan_async, c.case_id, c.pat_id)
+            executor.submit(generate_tan_async, c.id, c.case_id)
     return ("", 204)
 
 
@@ -380,8 +380,8 @@ def edit_case(case_id):
         try:
             db.session.commit()
             log_entry(case.case_id, pat_id, "info", f"Case edited")
-            executor.submit(fetch_research_consent_async, case.case_id, pat_id)
-            executor.submit(generate_tan_async, case.case_id, pat_id)
+            executor.submit(fetch_research_consent_async, case.id, pat_id)
+            executor.submit(generate_tan_async, case.id, case_id)
         except Exception as e:
             log_entry(case.case_id, pat_id, "error", f"Could not commit changes: {str(e)}")
         return redirect("/drafts")
@@ -404,7 +404,7 @@ def transmit():
     cases_serialized = []
     for c in cases:
         d = serialize_model_dates(c)
-        d["ready"] = (c.research_consent is not None and getattr(c, "tan_c", None) is not None)
+        d["ready"] = d.get("tan_c", None) is not None
         cases_serialized.append(d)
     return render_template("transmit.html", cases=cases_serialized)
 
@@ -416,39 +416,39 @@ def send_case(case_id):
         flash(f"Case {case_id} nicht gefunden.", "danger")
         return redirect(url_for("transmit"))
 
-    if case.research_consent is None or getattr(case, "tan_c", None) is None:
+    if getattr(case, "tan_c", None) is None:
         flash(f"Case {case_id} ist nicht bereit zum Senden.", "warning")
         return redirect(url_for("transmit"))
 
     consts = get_constants()
     payload = build_oncology_payload(serialize_model_dates(case), consts)
-
-    mv64_endpoint = os.environ.get("MV64_ENDPOINT", "https://example.com/mv64")
-    try:
-        response = requests.post(mv64_endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
-        status_code = response.status_code
-        response_json = response.json() if response.text else {}
-
-        # save transmission
-        trans = Transmission(case_id=case_id, request=payload, response=response_json)
-        db.session.add(trans)
-
-        if status_code in (200, 202):
-            case.transmitted = True
-            db.session.add(case)
-            log_entry(case.case_id, case.pat_id, "info", f"Case {case.case_id}: Wurde erfolgreich an das BfArM übermittelt.")
-            flash(f"Case {case_id} erfolgreich an das BfArM gesendet.", "success")
-        else:
-            log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden (Status {status_code}).")
-            flash(f"Senden von Case {case_id} fehlgeschlagen (Status {status_code}).", "danger")
-
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}")
-        flash(f"Fehler beim Senden von Case {case_id}: {e}", "danger")
-
-    return redirect(url_for("transmit"))
+    return jsonify(payload)
+    # mv64_endpoint = os.environ.get("MV64_ENDPOINT", "https://example.com/mv64")
+    # try:
+    #     response = requests.post(mv64_endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+    #     status_code = response.status_code
+    #     response_json = response.json() if response.text else {}
+    #
+    #     # save transmission
+    #     trans = Transmission(case_id=case_id, request=payload, response=response_json)
+    #     db.session.add(trans)
+    #
+    #     if status_code in (200, 202):
+    #         case.transmitted = True
+    #         db.session.add(case)
+    #         log_entry(case.case_id, case.pat_id, "info", f"Case {case.case_id}: Wurde erfolgreich an das BfArM übermittelt.")
+    #         flash(f"Case {case_id} erfolgreich an das BfArM gesendet.", "success")
+    #     else:
+    #         log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden (Status {status_code}).")
+    #         flash(f"Senden von Case {case_id} fehlgeschlagen (Status {status_code}).", "danger")
+    #
+    #     db.session.commit()
+    # except Exception as e:
+    #     db.session.rollback()
+    #     log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}")
+    #     flash(f"Fehler beim Senden von Case {case_id}: {e}", "danger")
+    #
+    # return redirect(url_for("transmit"))
 
 
 @app.route("/logs")
@@ -473,16 +473,16 @@ def view_logs():
 def init_constants():
     REQUIRED = {
         'submission_type': 'initial',
-        'submission_submitterId': '999950000',
+        'submission_submitterId': '260914050',
         'submission_genomicDataCenterId': 'GRZHD0003',
-        'submission_clinicalDataNodeId': 'KDKHD0006',
+        'submission_clinicalDataNodeId': 'KDKK00007',
         'submission_diseaseType': 'oncological',
         'mainDiagnosis_system': 'ICD-10-GM',
-        'mainDiagnosis_version': 'icd10.gm-2019-10-04',
-        'histology_system': 'ICD-O-3-M',
-        'histology_version': 'icdo3morph.rev1de',
-        'topography_system': 'ICD-O-3-T',
-        'topography_version': 'icdo3topo.rev1de'
+        'mainDiagnosis_version': '2024',
+        'histology_system': 'ICD-O-3',
+        'histology_version': '2019',
+        'topography_system': 'ICD-O-3',
+        'topography_version': '2019'
     }
 
     for key, value in REQUIRED.items():
@@ -499,8 +499,8 @@ if __name__ == "__main__":
 
     # ensure tables exist
     with app.app_context():
-        # if debug:
-        #     db.drop_all()
+        if debug:
+            db.drop_all()
         db.create_all()
         # if debug:
         #     generate_test_data()

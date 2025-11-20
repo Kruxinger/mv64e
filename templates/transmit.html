@@ -24,22 +24,27 @@
             <td>{{ c.pat_id }}</td>
             <td>{{ c.case_id }}</td>
             <td>
-                {% if c.research_consent%}
-                ✅ vorhanden
+                {% if c.research_consent %}
+                <a href="#" class="text-success"
+                   data-bs-toggle="modal"
+                   data-bs-target="#consentModal"
+                   data-consent='{{ c.research_consent | tojson }}'>
+                    ✅ vorhanden
+                </a>
                 {% else %}
                 ❌ fehlt
                 {% endif %}
             </td>
             <td>
-                {% if c.tanC %}
-                ✅ {{ c.tanC }}
+                {% if c.tan_c %}
+                ✅ {{ c.tan_c }}
                 {% else %}
                 ❌ fehlt
                 {% endif %}
             </td>
             <td>
                 {% if c.ready %}
-                <form method="post" action="{{ url_for('send_case', case_id=c.case_id) }}">
+                <form method="post" action="{{ url_for('send_case', case_id=c.case_id) }}" target="_blank">
                     <button type="submit" class="btn btn-success btn-sm">Senden</button>
                 </form>
                 {% else %}
@@ -64,6 +69,20 @@
         Der Prozess wurde gestartet. Das kann einige Sekunden bis Minuten dauern.
     </div>
 </div>
+<div class="modal fade" id="consentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Broad Consent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="consent-json" style="white-space: pre-wrap;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container mt-3">
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -88,6 +107,14 @@
           alert('Fehler beim Starten des Reload-Prozesses.');
         });
     });
+    document.getElementById('consentModal').addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    const raw = trigger.getAttribute('data-consent');
+    const parsed = JSON.parse(raw);
+
+    document.getElementById('consent-json').textContent =
+        JSON.stringify(parsed, null, 2);
+});
 </script>
 {% endblock %}
 

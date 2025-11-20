@@ -21,7 +21,10 @@ def get_research_consent(pat_id: str):
         headers = {"Authorization": f"Bearer {token}"}
         response = session.get(url, headers=headers)
         response.raise_for_status()
-        log_entry("", "pat_id", "info", "Received Broad Consent from DIZ")
-        return response.json()
+        if "entry" in response.json():
+            log_entry("", "pat_id", "info", "Received Broad Consent from DIZ")
+            return response.json()['entry']
+        log_entry("", "pat_id", "warning", "There is no Consent for this patient")
+        return []
     except Exception as e:
         log_entry("", "pat_id", "error", f"Error while requesting Broad Consent: {str(e)}")

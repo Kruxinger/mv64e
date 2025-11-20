@@ -1,26 +1,29 @@
 import threading
 from models import db, Case, Log
+from utils.consent import get_research_consent
+from utils.tan_service import generate_tan
 
-def generate_tan_async(case_id):
+
+def generate_tan_async(id, case_id):
+    from app import app
     def task():
-        # z. B. HTTP-Request oder API-Call
-        print(f"Generating TAN for case {case_id}")
-        # hier evtl. Log-Eintrag:
-        log = Log(case_id=case_id, type="info", text="TAN generated")
-        db.session.add(log)
-        db.session.commit()
-
+        with app.app_context():
+            tan = generate_tan(case_id)
+            case:Case = Case.query.filter_by(id=id).first()
+            if case:
+                case.tan_c = tan
+                db.session.commit()
     threading.Thread(target=task).start()
 
 
-def fetch_research_consent_async(case_id):
+def fetch_research_consent_async(id, pat_id):
+    from app import app
     def task():
-        print(f"Fetching research consent for case {case_id}")
-        # Daten extern abrufen …
-        # z. B. Ergebnis speichern:
-        case = Case.query.filter_by(case_id=case_id).first()
-        if case:
-            case.research_consent = {"consent": "fetched"}
-            db.session.commit()
+        with app.app_context():
+            research_consent = get_research_consent(pat_id)
+            case = Case.query.filter_by(id=id).first()
+            if case:
+                case.research_consent = research_consent
+                db.session.commit()
 
     threading.Thread(target=task).start()

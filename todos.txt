@@ -1,35 +1,33 @@
 
-
-    case_id =
-    pat_id =
-    gender = patient.geschlecht[w,m,d]
-    birth_date = patient.geburtsdatum
-    address_ags = patient.GKZ[:4]
-
-    decision_to_include = db.Column(db.Boolean)
-    molecular_board_decision_date = db.Column(db.Date)
-    rejection_justification = db.Column(db.Text)
-    main_diagnosis_date = db.Column(db.Date)
-    main_diagnosis_code = db.Column(db.String)
-    coverage_type = db.Column(db.String)
-    ecog = db.Column(db.String)
-    germline_confirmed = db.Column(db.Boolean)
-    histology_code = db.Column(db.String)
-    topography_code = db.Column(db.String)
-    library_type = db.Column(db.String)
-    submission_type = db.Column(db.String)
-    submission_submitter_id = db.Column(db.String)
-    submission_genomic_data_center_id = db.Column(db.String)
-    submission_clinical_data_node_id = db.Column(db.String)
-    submission_disease_type = db.Column(db.String)
-    main_diagnosis_system = db.Column(db.String)
-    main_diagnosis_version = db.Column(db.String)
-    histology_system = db.Column(db.String)
-    histology_version = db.Column(db.String)
-    topography_system = db.Column(db.String)
-    topography_version = db.Column(db.String)
-    tan_c = db.Column(db.String)
-    mv_consent = db.Column(db.JSON)
-    research_consent = db.Column(db.JSON)
-    transmitted = db.Column(db.Boolean, default=False)
-    is_finalized = db.Column(db.Boolean, default=False)
+    pat_data["case_id"] = ""
+    pat_data["pat_id"] = ""
+    pat_data["gender"] = ""
+    pat_data["birth_date"] = ""
+    pat_data["address_ags"] = ""
+    pat_data["decision_to_include"] = ""
+    pat_data["molecular_board_decision_date"] = ""
+    pat_data["rejection_justification"] = ""
+    pat_data["main_diagnosis_date"] = ""
+    pat_data["main_diagnosis_code"] = ""
+    pat_data["coverage_type"] = ""
+    pat_data["ecog"] = ""
+    pat_data["germline_confirmed"] = ""
+    pat_data["histology_code"] = ""
+    pat_data["topography_code"] = ""
+    pat_data["library_type"] = ""
+    pat_data["submission_type"] = ""
+    pat_data["submission_submitter_id"] = ""
+    pat_data["submission_genomic_data_center_id"] = ""
+    pat_data["submission_clinical_data_node_id"] = ""
+    pat_data["submission_disease_type"] = ""
+    pat_data["main_diagnosis_system"] = ""
+    pat_data["main_diagnosis_version"] = ""
+    pat_data["histology_system"] = ""
+    pat_data["histology_version"] = ""
+    pat_data["topography_system"] = ""
+    pat_data["topography_version"] = ""
+    pat_data["tan_c"] = ""
+    pat_data["mv_consent"] = ""
+    pat_data["research_consent"] = ""
+    pat_data["transmitted"] = ""
+    pat_data["is_finalized"] = ""
