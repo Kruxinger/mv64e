@@ -9,11 +9,11 @@ from flask import flash
 
 from models import Transmission, Case
 from utils.logging import log_entry
+import logging
 
 
 def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
     from app import db
-
     mv64_endpoint = os.environ.get(f"BFARM_ENDPOINT_{endpoint}")
     try:
         headers = {
@@ -34,29 +34,38 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
         # save transmission
         trans = Transmission(case_id=case.case_id, request=payload, response=response_json)
         db.session.add(trans)
+        ok = status_code in (200, 202)
+        is_prod = endpoint == "PROD"
+        success_flag = response_json.get("success")
 
-        if status_code in (200, 202):
-            if endpoint == "PROD":
+        target_name = "BfArM" if is_prod else "Testknoten"
+
+        # Flash-Kategorie abhängig vom success-Flag
+        if success_flag is False:
+            flash_category = "warning"  # Gelb
+        elif ok:
+            flash_category = "success"  # Grün
+        else:
+            flash_category = "danger"  # Rot
+
+        # Logging-Text
+        if ok:
+            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt."
+            if is_prod:
                 case.transmitted = True
                 db.session.add(case)
-                log_entry(case.case_id, case.pat_id, "info",
-                          f"Case {case.case_id}: Wurde erfolgreich an das BfArM übermittelt.")
-                flash(f"Case {case.id} erfolgreich an das BfArM gesendet.", "success")
-            else:
-                log_entry(case.case_id, case.pat_id, "info",
-                          f"Case {case.case_id}: Wurde erfolgreich an Testknoten übermittelt.")
-                flash(f"Case {case.id} erfolgreich an Testknoten gesendet.", "success")
         else:
-            if endpoint == "PROD":
-                log_entry(case.case_id, case.pat_id, "error",
-                          f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden (Status {status_code}).")
-                flash(f"Senden von Case {case.case_id} fehlgeschlagen (Status {status_code}).", "danger")
-            else:
-                log_entry(case.case_id, case.pat_id, "error",
-                          f"Case {case.case_id}: Konnte nicht an den Testknoten übermittelt werden (Status {status_code}).")
-                flash(f"Senden von Case {case.case_id} fehlgeschlagen (Status {status_code}).", "danger")
+            msg = f"Case {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code})."
 
+        # Log schreiben
+        log_entry(case.case_id, case.pat_id,
+                  "info" if ok else "error",
+                  msg)
 
+        # Flash ausgeben – immer mit response_json
+        flash(f"{msg}\n{response_json}", flash_category)
+
+        db.session.commit()
 
     except Exception as e:
         db.session.rollback()

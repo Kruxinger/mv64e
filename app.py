@@ -19,6 +19,7 @@ from sqlalchemy import func
 from utils.check_services import check_services
 from utils.generate_test_data import generate_test_data
 from utils.logging import log_entry
+from utils.onkostar_interface import get_query_res_as_dict
 from utils.tasks import fetch_research_consent_async, generate_tan_async
 from utils.transmit_utils import build_oncology_payload, send
 
@@ -461,7 +462,7 @@ def send_case():
     consts = get_constants()
     payload = build_oncology_payload(serialize_model_dates(case), consts)
     if endpoint == 'TEST':
-        payload['submission']['type'] = "test"
+        payload['metaData']['submission']['type'] = "test"
     send(payload=payload, endpoint=endpoint, case=case)
     return redirect(url_for("transmit"))
 
@@ -482,6 +483,36 @@ def view_logs():
     ]
 
     return render_template("logs.html", logs=logs_serialized, case_id=case_id)
+
+
+@app.route("/onko_import_wiz_step_1")
+def onko_import_wiz_step_1():
+    if request.method == "POST":
+        patient_id = request.form.get("patient_id")
+        if not patient_id:
+            flash("Bitte eine Patienten-ID eingeben.", "warning")
+            return redirect(url_for("onko_import_wiz_step_1"))
+
+        res = get_query_res_as_dict("SELECT id, beginndatum FROM prozedur WHERE patient_id=0 AND html_schnipsel_detailiert LIKE '%DNPM Klinik/Anamnese%' AND geloescht=0")
+        if len(res)==0:
+            flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "danger")
+            return redirect(url_for("onko_import_wiz_step_1"))
+
+        with_date = [p for p in res if res["beginndatum"] is not None]
+
+        if len(with_date) == 1:
+            return redirect(url_for("onko_import_wiz_step_2"))
+
+        if len(with_date) == 0:
+            flash("Kein DNPM Klinik/Anamnese Formular hat ein valides Datum!", "danger")
+            return redirect(url_for("onko_import_wiz_step_1"))
+
+        if len(with_date) > 1:
+            return redirect(url_for("onko_import_wiz_step_1_select"))
+
+        return redirect(url_for("onko_import_wiz_step_1"))
+
+    return render_template("onko_import_wiz_step_1.html")
 
 
 
