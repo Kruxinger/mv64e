@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import ARRAY
 
 db = SQLAlchemy()
 
@@ -22,6 +23,7 @@ class Case(db.Model):
     ecog = db.Column(db.String)
     germline_confirmed = db.Column(db.Boolean)
     histology_code = db.Column(db.String)
+    local_case_id = db.Column(db.String)
     topography_code = db.Column(db.String)
     library_type = db.Column(db.String)
     submission_type = db.Column(db.String)
@@ -37,7 +39,7 @@ class Case(db.Model):
     topography_version = db.Column(db.String)
     tan_c = db.Column(db.String)
     mv_consent = db.Column(db.JSON)
-    research_consent = db.Column(db.Array)
+    research_consent = db.Column(ARRAY(db.JSON))
     transmitted = db.Column(db.Boolean, default=False)
     is_finalized = db.Column(db.Boolean, default=False)
 

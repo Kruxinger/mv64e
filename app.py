@@ -20,7 +20,7 @@ from utils.check_services import check_services
 from utils.generate_test_data import generate_test_data
 from utils.logging import log_entry
 from utils.tasks import fetch_research_consent_async, generate_tan_async
-from utils.transmit_utils import build_oncology_payload
+from utils.transmit_utils import build_oncology_payload, send
 
 # Models (assumes models.py defines db, Case, Transmission, Constant, Log, ServiceStatus)
 from models import db, Case, Transmission, Constant, Log, ServiceStatus
@@ -220,6 +220,7 @@ def add_case():
         main_diagnosis_date = request.form.get("main_diagnosis_date") or None
         main_diagnosis_code = request.form.get("main_diagnosis_code")
         ecog = request.form.get("ecog")
+        local_case_id = request.form.get("local_case_id")
         coverage_type = request.form.get("coverage_type")
         germline_confirmed = request.form.get("germline_confirmed") == "true"
         histology_code = request.form.get("histology_code")
@@ -260,6 +261,7 @@ def add_case():
             main_diagnosis_date=main_diagnosis_date if main_diagnosis_date else None,
             main_diagnosis_code=main_diagnosis_code,
             ecog=ecog,
+            local_case_id=local_case_id,
             germline_confirmed=germline_confirmed,
             histology_code=histology_code,
             topography_code=topography_code,
@@ -342,6 +344,7 @@ def edit_case(case_id):
         case.gender = request.form.get("gender")
         case.birth_date = request.form.get("birth_date") or None
         case.address_ags = request.form.get("address_ags")
+        case.local_case_id = request.form.get("local_case_id")
         case.decision_to_include = request.form.get("decision_to_include") == "true"
         case.molecular_board_decision_date = request.form.get("molecular_board_decision_date") or None
         case.rejection_justification = request.form.get("rejection_justification", "otherReason")
@@ -408,9 +411,8 @@ def transmit():
         cases_serialized.append(d)
     return render_template("transmit.html", cases=cases_serialized)
 
-
-@app.route("/send_case/<case_id>", methods=["POST"])
-def send_case(case_id):
+@app.route("/show_json/<case_id>", methods=["POST"])
+def show_json(case_id):
     case = Case.query.filter_by(case_id=case_id).first()
     if not case:
         flash(f"Case {case_id} nicht gefunden.", "danger")
@@ -423,32 +425,45 @@ def send_case(case_id):
     consts = get_constants()
     payload = build_oncology_payload(serialize_model_dates(case), consts)
     return jsonify(payload)
-    # mv64_endpoint = os.environ.get("MV64_ENDPOINT", "https://example.com/mv64")
-    # try:
-    #     response = requests.post(mv64_endpoint, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
-    #     status_code = response.status_code
-    #     response_json = response.json() if response.text else {}
-    #
-    #     # save transmission
-    #     trans = Transmission(case_id=case_id, request=payload, response=response_json)
-    #     db.session.add(trans)
-    #
-    #     if status_code in (200, 202):
-    #         case.transmitted = True
-    #         db.session.add(case)
-    #         log_entry(case.case_id, case.pat_id, "info", f"Case {case.case_id}: Wurde erfolgreich an das BfArM übermittelt.")
-    #         flash(f"Case {case_id} erfolgreich an das BfArM gesendet.", "success")
-    #     else:
-    #         log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden (Status {status_code}).")
-    #         flash(f"Senden von Case {case_id} fehlgeschlagen (Status {status_code}).", "danger")
-    #
-    #     db.session.commit()
-    # except Exception as e:
-    #     db.session.rollback()
-    #     log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}")
-    #     flash(f"Fehler beim Senden von Case {case_id}: {e}", "danger")
-    #
-    # return redirect(url_for("transmit"))
+
+@app.route("/transmissions/<int:index>")
+def show_transmission(index=0):
+    transmissions = Transmission.query.order_by(Transmission.timestamp).all()
+    total = len(transmissions)
+
+    if not transmissions:
+        return render_template("transmissions.html", transmission=None, index=0, total=0)
+
+    # Index begrenzen
+    index = max(0, min(index, total - 1))
+    transmission = transmissions[index]
+
+    return render_template(
+        "transmissions.html",
+        transmission=transmission,
+        index=index + 1,  # für Anzeige 1-basiert
+        total=total
+    )
+
+@app.route("/send_case", methods=["POST"])
+def send_case():
+    case_id = request.args.get("case_id")
+    endpoint = request.args.get("bfarm_endpoint")
+    case = Case.query.filter_by(case_id=case_id).first()
+    if not case:
+        flash(f"Case {case_id} nicht gefunden.", "danger")
+        return redirect(url_for("transmit"))
+
+    if getattr(case, "tan_c", None) is None:
+        flash(f"Case {case_id} ist nicht bereit zum Senden.", "warning")
+        return redirect(url_for("transmit"))
+
+    consts = get_constants()
+    payload = build_oncology_payload(serialize_model_dates(case), consts)
+    if endpoint == 'TEST':
+        payload['submission']['type'] = "test"
+    send(payload=payload, endpoint=endpoint, case=case)
+    return redirect(url_for("transmit"))
 
 
 @app.route("/logs")
@@ -499,8 +514,8 @@ if __name__ == "__main__":
 
     # ensure tables exist
     with app.app_context():
-        if debug:
-            db.drop_all()
+        # if debug:
+        #     db.drop_all()
         db.create_all()
         # if debug:
         #     generate_test_data()

@@ -1,0 +1,39 @@
+<!-- templates/transmissions.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    {% if not transmission %}
+    <p>Keine Transmissions vorhanden.</p>
+    {% else %}
+    <!-- Kopfzeile Navigation -->
+    <div class="d-flex justify-content-center align-items-center mb-3">
+        {% set prev_index = index - 2 if index > 1 else 0 %}
+        {% set next_index = index if index < total else total - 1 %}
+        <a href="{{ url_for('show_transmission', index=prev_index) }}" class="btn btn-outline-primary me-2">&lt;</a>
+        <span>{{ index }}/{{ total }}</span>
+        <a href="{{ url_for('show_transmission', index=next_index) }}" class="btn btn-outline-primary ms-2">&gt;</a>
+    </div>
+
+    <!-- Kopfinfos -->
+    <h5>Case ID: {{ transmission.case_id }}</h5>
+    <p>Timestamp: {{ transmission.timestamp }}</p>
+
+    <!-- JSON Anzeige -->
+    <div class="row">
+        <div class="col-md-6">
+            <h6>Request</h6>
+            <pre style="white-space: pre-wrap; word-break: break-word; max-height: 70vh; overflow:auto;">
+{{ transmission.request | tojson(indent=2) }}
+                </pre>
+        </div>
+        <div class="col-md-6">
+            <h6>Response</h6>
+            <pre style="white-space: pre-wrap; word-break: break-word; max-height: 70vh; overflow:auto;">
+{{ transmission.response | tojson(indent=2) }}
+                </pre>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

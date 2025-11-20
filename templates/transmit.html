@@ -43,15 +43,30 @@
                 {% endif %}
             </td>
             <td>
-                {% if c.ready %}
-                <form method="post" action="{{ url_for('send_case', case_id=c.case_id) }}" target="_blank">
-                    <button type="submit" class="btn btn-success btn-sm">Senden</button>
-                </form>
-                {% else %}
-                <button class="btn btn-secondary btn-sm" disabled>Senden</button>
-                {% endif %}
-            </td>
+                <div class="btn-group-vertical w-100 gap-1">
 
+                    <form action="{{ url_for('edit_case', case_id=c.case_id) }}" method="get" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">Bearbeiten</button>
+                    </form>
+
+                    <form method="post" action="{{ url_for('show_json', case_id=c.case_id) }}" target="_blank" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-info w-100">JSON anzeigen</button>
+                    </form>
+
+                    {% if c.ready %}
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='TEST') }}" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">Senden an TEST</button>
+                    </form>
+
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='PROD') }}" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-success w-100">Senden an PROD</button>
+                    </form>
+                    {% else %}
+                    <button class="btn btn-sm btn-secondary w-100" disabled>Senden</button>
+                    {% endif %}
+
+                </div>
+            </td>
         </tr>
         {% endfor %}
         </tbody>

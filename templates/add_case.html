@@ -9,18 +9,22 @@
     <form method="post" class="row g-3">
         <input type="hidden" name="case_id" value="{{ case.case_id if case else '' }}">
 
-        <div class="col-md-6">
+        <div class="col-md-4">
             <label class="form-label">Patienten-ID</label>
             <input type="text" name="pat_id" class="form-control" required
                    value="{{ case.pat_id if case else '' }}">
         </div>
 
-        <div class="col-md-6">
-            <label class="form-label">Fall-ID</label>
+        <div class="col-md-4">
+            <label class="form-label">GS-Fall-ID</label>
             <input type="text" name="case_id_display" class="form-control" required
                    value="{{ case.case_id if case else '' }}">
         </div>
-
+        <div class="col-md-4">
+            <label class="form-label">LMU-Fall-ID</label>
+            <input type="text" name="local_case_id" class="form-control" required
+                   value="{{ case.local_case_id if case else '' }}">
+        </div>
         <hr/>
 
         <div class="col-md-4">
@@ -116,14 +120,6 @@
                 {% for score in ['0','1','2','3','4','5','unknown','notApplicable'] %}
                 <option value="{{ score }}" {% if case and case.ecog==score %}selected{% endif %}>{{ score }}</option>
                 {% endfor %}
-            </select>
-        </div>
-
-        <div class="col-md-4">
-            <label class="form-label">Germline Confirmed</label>
-            <select name="germline_confirmed" class="form-select">
-                <option value="true" {% if case and case.germline_confirmed %}selected{% endif %}>Ja</option>
-                <option value="false" {% if case and not case.germline_confirmed %}selected{% endif %}>Nein</option>
             </select>
         </div>
 
@@ -226,6 +222,31 @@ const selectInclude = document.querySelector('select[name="decision_to_include"]
 const rejectionDiv = document.getElementById('rejectionDiv');
 selectInclude.addEventListener('change', () => {
     rejectionDiv.style.display = selectInclude.value === "false" ? "block" : "none";
+});
+// --- VALIDATOR ---
+document.querySelector("form").addEventListener("submit", function(e) {
+    const mbDate = document.querySelector('input[name="molecular_board_decision_date"]').value;
+    const presDate = document.getElementById('mv_consent_presentation_date').value;
+    const seqDate = document.getElementById('mv_consent_scope_mvSequencing_date').value;
+
+    // Datum in JS-Dateobjekte wandeln
+    const mb = mbDate ? new Date(mbDate) : null;
+    const pres = presDate ? new Date(presDate) : null;
+    const seq = seqDate ? new Date(seqDate) : null;
+
+    let errors = [];
+
+    if (mb && pres && mb < pres) {
+        errors.push("Molecular Board Decision Date darf nicht vor Presentation Date liegen.");
+    }
+    if (mb && seq && mb < seq) {
+        errors.push("Molecular Board Decision Date darf nicht vor mvSequencing Date liegen.");
+    }
+
+    if (errors.length > 0) {
+        e.preventDefault();
+        alert(errors.join("\n"));
+    }
 });
 
 </script>
