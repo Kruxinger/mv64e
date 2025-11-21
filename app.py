@@ -17,9 +17,12 @@ from sqlalchemy import func
 
 # Local modules
 from utils.check_services import check_services
+from utils.consent import get_research_consent
 from utils.generate_test_data import generate_test_data
 from utils.logging import log_entry
 from utils import onkostar_interface
+from utils.onkostar_interface import OnkostarInterface
+from utils.tan_service import generate_tan
 from utils.tasks import fetch_research_consent_async, generate_tan_async
 from utils.transmit_utils import build_oncology_payload, send
 
@@ -488,33 +491,73 @@ def view_logs():
 @app.route("/onko_import_wiz_step_1")
 def onko_import_wiz_step_1():
     if request.method == "POST":
+        # Hole die pat_id aus Eingabemaske
         patient_id = request.form.get("patient_id")
         if not patient_id:
             flash("Bitte eine Patienten-ID eingeben.", "warning")
             return redirect(url_for("onko_import_wiz_step_1"))
 
-        res = onkostar_interface.get_anamnese_procedures_for_pat(patient_id)
-        if len(res)==0:
-            flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "danger")
+        os_interface = OnkostarInterface()
+        # Prüfen, ob es in der OS DB 1...1 Patient mit der ID gibt (und dem Personenstamm)
+        if not os_interface.get_pat_data(patient_id):
             return redirect(url_for("onko_import_wiz_step_1"))
 
-        with_date = [p for p in res if res["beginndatum"] is not None]
+        # Nun suchen wir das "richtige" DNPM Klinik/Anamnese Formular
+        prod_ids_dates= os_interface.get_anamnese_procedures()
 
-        if len(with_date) == 1:
-            return redirect(url_for("onko_import_wiz_step_2"))
+        # Der Patient hat KEIN DNPM Klinik/Anamnese Formular
+        if len(prod_ids_dates)==0:
+            os_interface.log_and_flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "error")
+            return redirect(url_for("onko_import_wiz_step_1"))
 
+        # Nun prüfen auf Datum: Wir haben viele leere Formulare, meist durch Plugin angelegt
+        # diese brauchen wir nicht, können diese aber am fehlenden Datum erkennen
+        with_date = [p for p in prod_ids_dates if p["beginndatum"] is not None]
+
+        # Der Patient hat KEIN DNPM Klinik/Anamnese Formular mit einem Datum != None => Nicht (richtig) dokumentiert
         if len(with_date) == 0:
             flash("Kein DNPM Klinik/Anamnese Formular hat ein valides Datum!", "danger")
             return redirect(url_for("onko_import_wiz_step_1"))
 
+        # Es gibt mehr als ein DNPM Klinik/Anamnese Formular mit validem Datum => Möglich, bei mehreren Einschlüssen
+        # => Datum muss gewählt werden
         if len(with_date) > 1:
-            return redirect(url_for("onko_import_wiz_step_1_select"))
+            dates = [p["beginndatum"].strftime('%d.%m.%Y') for p in prod_ids_dates]
+            return redirect(url_for("onko_import_wiz_step_1_select",pat_id=patient_id, dates=dates))
 
-        return redirect(url_for("onko_import_wiz_step_1"))
+        # Es gibt genau ein Formular mit datum => Best Case
+        # Daten werden direkt geladen und in der Maske angezeigt
+
+        os_interface.procedure_id = prod_ids_dates[0]['id']
+        case = os_interface.get_case_data()
+        case.tan_c = generate_tan(case_id=case.case_id)
+        case.research_consent = get_research_consent(case.pat_id)
+        db.session.add(case)
+        db.session.commit()
+
+
+        return redirect(url_for("edit_case", case_id=case.id))
 
     return render_template("onko_import_wiz_step_1.html")
 
+@app.route("/onko_import_wiz_step_1_select")
+def onko_import_wiz_step_1_select():
+    if request.method == "POST":
+        patient_id = request.form.get("patient_id")
+        procedure_date = request.form.get("procedure_date")
+        os_interface = OnkostarInterface()
+        os_interface.get_pat_data(patient_id)
+        prod_ids_dates = os_interface.get_anamnese_procedures()
+        os_interface.procedure_id = next(p['id'] for p in prod_ids_dates if p['datum']==procedure_date)
+        case = os_interface.get_case_data()
+        case.tan_c = generate_tan(case_id=case.case_id)
+        case.research_consent = get_research_consent(case.pat_id)
+        db.session.add(case)
+        db.session.commit()
 
+        return redirect(url_for("edit_case", case_id=case.id))
+
+    return render_template("onko_import_wiz_step_1.html")
 
 def init_constants():
     REQUIRED = {
@@ -528,7 +571,8 @@ def init_constants():
         'histology_system': 'ICD-O-3',
         'histology_version': '2019',
         'topography_system': 'ICD-O-3',
-        'topography_version': '2019'
+        'topography_version': '2019',
+        'onkostar_personenstamm': 'SAP'
     }
 
     for key, value in REQUIRED.items():

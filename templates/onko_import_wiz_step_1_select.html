@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}MV64e CCC{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h3>Daten aus Onkostar laden</h3>
+
+    <form method="post">
+        <div class="mb-3">
+            <div class="mb-3">
+            <label for="patient_id" class="form-label">Patienten-ID</label>
+            <input value="{{ pat_id }}" type="text" class="form-control" id="patient_id" name="patient_id" required readonly>
+        </div>
+            <label for="procedure_date" class="form-label">Es wurden mehrere "DNPM Klinik/Anamnese" Formulare gefunden. Bitte wählen Sie eines
+    anhand des Datums aus:</label>
+            <select name="procedure_date" id="procedure_date" class="form-select">
+                {% for date in dates %}
+                <option>{{ date }}</option>
+                {% endfor %}
+            </select>
+
+        </div>
+        <button type="submit" class="btn btn-primary">Laden</button>
+    </form>
+
+
+</div>
+{% endblock %}

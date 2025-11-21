@@ -1,15 +1,25 @@
-<form method="post">
-    <div class="mb-3">
-        <label for="patient_id" class="form-label">Patienten-ID</label>
-        <input type="text" class="form-control" id="patient_id" name="patient_id" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Laden</button>
-</form>
+{% extends 'base.html' %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
+{% block title %}MV64e CCC{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h3>Daten aus Onkostar laden</h3>
+
+    <form method="post">
+        <div class="mb-3">
+            <label for="patient_id" class="form-label">Patienten-ID</label>
+            <input type="text" class="form-control" id="patient_id" name="patient_id" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Laden</button>
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
     {% for category, msg in messages %}
-      <div class="alert alert-{{ category }} mt-2">{{ msg }}</div>
+    <div class="alert alert-{{ category }} mt-2">{{ msg }}</div>
     {% endfor %}
-  {% endif %}
-{% endwith %}
+    {% endif %}
+    {% endwith %}
+</div>
+{% endblock %}
