@@ -322,6 +322,7 @@ def edit_constants():
             else:
                 db.session.add(Constant(key=key, value=value))
         db.session.commit()
+        flash("Konstanten wurden aktualisiert", "success")
         return redirect("/admin/constants")
 
     consts = get_constants()
@@ -488,7 +489,7 @@ def view_logs():
     return render_template("logs.html", logs=logs_serialized, case_id=case_id)
 
 
-@app.route("/onko_import_wiz_step_1")
+@app.route("/onko_import_wiz_step_1", methods=["GET","POST"])
 def onko_import_wiz_step_1():
     if request.method == "POST":
         # Hole die pat_id aus Eingabemaske
@@ -527,8 +528,8 @@ def onko_import_wiz_step_1():
 
         # Es gibt genau ein Formular mit datum => Best Case
         # Daten werden direkt geladen und in der Maske angezeigt
-
-        os_interface.procedure_id = prod_ids_dates[0]['id']
+        # else
+        os_interface.procedure_id = with_date[0]['id']
         case = os_interface.get_case_data()
         case.tan_c = generate_tan(case_id=case.case_id)
         case.research_consent = get_research_consent(case.pat_id)
@@ -536,9 +537,17 @@ def onko_import_wiz_step_1():
         db.session.commit()
 
 
-        return redirect(url_for("edit_case", case_id=case.id))
+        return redirect(url_for("edit_case", case_id=case.case_id))
 
     return render_template("onko_import_wiz_step_1.html")
+
+@app.post("/cases/<case_id>/delete")
+def delete_case(case_id):
+    case = Case.query.filter_by(case_id=case_id).first_or_404()
+    db.session.delete(case)
+    db.session.commit()
+    flash("Fall wurde gelöscht.", "success")
+    return redirect(url_for("drafts"))
 
 @app.route("/onko_import_wiz_step_1_select")
 def onko_import_wiz_step_1_select():

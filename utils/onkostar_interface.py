@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 
@@ -17,7 +18,6 @@ class OnkostarInterface:
         self.procedure_id: str = ""
         self.engine = self._create_engine()
 
-        self.consentmv64e_id = ""
 
     def _create_engine(self) -> Engine:
         os.environ.get("FLASK_RUN_HOST", "0.0.0.0")
@@ -43,7 +43,7 @@ class OnkostarInterface:
 
     def get_pat_data(self, pat_id_lmu: str) -> bool:
         res = self.get_query_res_as_dict(
-            f"SELECT id, geschlecht, geburtsdatum, GKZ FROM patient JOIN personenstamm ON "
+            f"SELECT patient.id, geschlecht, geburtsdatum, GKZ FROM patient JOIN personenstamm ON "
             f"patient.personenstamm=personenstamm.id WHERE patient.patienten_id={pat_id_lmu} "
             f"AND personenstamm.name='{self.personenstamm}'")
         if len(res) == 1:
@@ -56,6 +56,7 @@ class OnkostarInterface:
                     self.new_case.gender = "male"
                 case "d":
                     self.new_case.gender = "divers"
+            self.new_case.pat_id = pat_id_lmu
 
             self.new_case.birth_date = res['geburtsdatum'].strftime('%d.%m.%Y')
             self.new_case.address_ags = res['GKZ'][:4] if len(res['GKZ']) >= 5 else ""
@@ -77,17 +78,19 @@ class OnkostarInterface:
                 f"SELECT anmeldedatummtb, datumerstdiagnose, icd10, icdo3histologie, icdo3lokalisation, mtb, "
                 f"artderkrankenkasse, consentmv64e, fallnummermv FROM dk_dnpm_kpa WHERE id={self.procedure_id}")
             res = res[0]
-            self.consentmv64e_id = res["consentmv64e"]
             self.new_case.main_diagnosis_date = res["datumerstdiagnose"]
             self.new_case.main_diagnosis_code = res["icd10"]
             self.new_case.case_id = res["fallnummermv"]
             self.new_case.coverage_type = res["artderkrankenkasse"]
-            self.new_case.histology_codepat_data["histology_code"] = res["icdo3histologie"]
+            self.new_case.histology_code = res["icdo3histologie"]
             self.new_case.topography_code = res["icdo3lokalisation"]
 
         def get_mv_consent():
             res = self.get_query_res_as_dict(
-                f"SELECT beginndatum, html_schnipsel_komprimiert FROM prozedur WHERE id={self.consentmv64e_id}")
+                f"SELECT beginndatum, html_schnipsel_komprimiert FROM prozedur WHERE id IN (SELECT consentmv64e FROM dk_dnpm_kpa WHERE id={self.procedure_id})")
+
+            if len(res) == 0:
+                return
             row = res[0]
             mapping = {
                 "Teilnahme": "mvSequencing",
@@ -114,18 +117,25 @@ class OnkostarInterface:
         def get_ecog():
             res = self.get_query_res_as_dict(
                 f"SELECT * FROM dk_dnpm_uf_ecog WHERE id IN (SELECT id FROM prozedur WHERE hauptprozedur_id={self.procedure_id})")
+
             if not res:
                 self.new_case.ecog = "notApplicable"
 
                 # jüngsten Eintrag wählen
             last = max(res, key=lambda r: r["datum"])
+
             ecog = last.get("ecog")
 
             if ecog in {"0", "1", "2", "3", "4", "5"}:
                 self.new_case.ecog = ecog
-            if ecog == "U":
+            elif ecog == "U":
                 self.new_case.ecog = "unknown"
-            self.new_case.ecog = "notApplicable"
+            else:
+                self.new_case.ecog = "notApplicable"
+            logging.error("*" * 100)
+            logging.error(ecog)
+            logging.error(self.new_case.ecog)
+            logging.error("*" * 100)
 
         def get_decision_data():
             res = self.get_query_res_as_dict(
@@ -146,6 +156,8 @@ class OnkostarInterface:
                                              f"(SELECT id FROM prozedur WHERE patient_id=0)) AND tk='mvgenomseq' "
                                              f"AND datum > {self.new_case.molecular_board_decision_date }")
             self.new_case.decision_to_include = len(res) == 1
+            if not self.new_case.decision_to_include:
+                self.new_case.rejection_justification = "otherReason"
 
         if not self.procedure_id or not self.os_pat_id:
             self.log_and_flash(
