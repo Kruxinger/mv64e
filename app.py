@@ -19,7 +19,7 @@ from sqlalchemy import func
 from utils.check_services import check_services
 from utils.generate_test_data import generate_test_data
 from utils.logging import log_entry
-from utils.onkostar_interface import get_query_res_as_dict
+from utils import onkostar_interface
 from utils.tasks import fetch_research_consent_async, generate_tan_async
 from utils.transmit_utils import build_oncology_payload, send
 
@@ -493,7 +493,7 @@ def onko_import_wiz_step_1():
             flash("Bitte eine Patienten-ID eingeben.", "warning")
             return redirect(url_for("onko_import_wiz_step_1"))
 
-        res = get_query_res_as_dict("SELECT id, beginndatum FROM prozedur WHERE patient_id=0 AND html_schnipsel_detailiert LIKE '%DNPM Klinik/Anamnese%' AND geloescht=0")
+        res = onkostar_interface.get_anamnese_procedures_for_pat(patient_id)
         if len(res)==0:
             flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "danger")
             return redirect(url_for("onko_import_wiz_step_1"))

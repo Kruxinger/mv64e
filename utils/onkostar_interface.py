@@ -13,3 +13,6 @@ def get_query_res_as_dict(query: str):
     with engine.begin() as conn:
         result = conn.execute(text(query))
         return [row for row in result.mappings()]
+
+def get_anamnese_procedures_for_pat(pat_id: str):
+    return get_query_res_as_dict("SELECT id, beginndatum FROM prozedur WHERE patient_id=0 AND html_schnipsel_detailiert LIKE '%DNPM Klinik/Anamnese%' AND geloescht=0")
