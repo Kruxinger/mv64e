@@ -40,6 +40,7 @@ class Case(db.Model):
     tan_c = db.Column(db.String)
     mv_consent = db.Column(db.JSON)
     research_consent = db.Column(ARRAY(db.JSON))
+
     transmitted = db.Column(db.Boolean, default=False)
     is_finalized = db.Column(db.Boolean, default=False)
 

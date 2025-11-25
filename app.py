@@ -167,6 +167,30 @@ def view_cases():
     cases_serialized = [serialize_model_dates(c) for c in cases]
     return render_template("cases_table.html", cases=cases_serialized, columns=columns)
 
+@app.route("/cases_overview")
+def cases_overview():
+    cases = Case.query.order_by(
+        Case.transmitted.asc(),  # false zuerst
+        Case.is_finalized.asc(),  # false zuerst
+        Case.id.desc()
+    ).all()
+
+    cases_serialized = []
+    for c in cases:
+        d = serialize_model_dates(c)
+        d["ready"] = d.get("tan_c") is not None
+        cases_serialized.append(d)
+
+    return render_template("cases_overview.html", cases=cases_serialized)
+
+@app.route("/unlock_case/<case_id>", methods=["POST"])
+def unlock_case(case_id):
+    c = Case.query.filter_by(case_id=case_id).first_or_404()
+    if c.is_finalized and not c.transmitted:
+        c.is_finalized = False
+        db.session.commit()
+    return redirect(url_for("edit_case", case_id=c.case_id))
+
 
 @app.route("/dashboard")
 def dashboard():
@@ -335,11 +359,7 @@ def edit_constants():
     return render_template("edit_constants.html", constants=consts)
 
 
-@app.route("/drafts")
-def drafts():
-    cases = Case.query.filter(Case.is_finalized.is_(False)).order_by(Case.id.desc()).all()
-    cases_serialized = [serialize_model_dates(c) for c in cases]
-    return render_template("drafts.html", cases=cases_serialized)
+
 
 
 @app.route("/edit_case/<case_id>", methods=["GET", "POST"])
@@ -398,27 +418,14 @@ def edit_case(case_id):
             executor.submit(generate_tan_async, case.id, case_id)
         except Exception as e:
             log_entry(case.case_id, pat_id, "error", f"Could not commit changes: {str(e)}")
-        return redirect("/drafts")
+        return redirect("/cases_overview")
 
     case = Case.query.filter_by(case_id=case_id).first_or_404()
     case_serialized = serialize_model_dates(case)
     return render_template("add_case.html", case=case_serialized)
 
 
-@app.route("/transmit")
-def transmit():
-    cases = (
-        Case.query
-        .filter(Case.transmitted.is_(False), Case.is_finalized.is_(True))
-        .order_by(Case.id.desc())
-        .all()
-    )
-    cases_serialized = []
-    for c in cases:
-        d = serialize_model_dates(c)
-        d["ready"] = d.get("tan_c", None) is not None
-        cases_serialized.append(d)
-    return render_template("transmit.html", cases=cases_serialized)
+
 
 
 @app.route("/show_json/<case_id>", methods=["POST"])
@@ -426,11 +433,11 @@ def show_json(case_id):
     case = Case.query.filter_by(case_id=case_id).first()
     if not case:
         flash(f"Case {case_id} nicht gefunden.", "danger")
-        return redirect(url_for("transmit"))
+        return redirect(url_for("cases_overview"))
 
     if getattr(case, "tan_c", None) is None:
         flash(f"Case {case_id} ist nicht bereit zum Senden.", "warning")
-        return redirect(url_for("transmit"))
+        return redirect(url_for("cases_overview"))
 
     consts = get_constants()
     payload = build_oncology_payload(serialize_model_dates(case), consts)
@@ -464,18 +471,18 @@ def send_case():
     case = Case.query.filter_by(case_id=case_id).first()
     if not case:
         flash(f"Case {case_id} nicht gefunden.", "danger")
-        return redirect(url_for("transmit"))
+        return redirect(url_for("cases_overview"))
 
     if getattr(case, "tan_c", None) is None:
         flash(f"Case {case_id} ist nicht bereit zum Senden.", "warning")
-        return redirect(url_for("transmit"))
+        return redirect(url_for("cases_overview"))
 
     consts = get_constants()
     payload = build_oncology_payload(serialize_model_dates(case), consts)
     if endpoint == 'TEST':
         payload['metaData']['submission']['type'] = "test"
     send(payload=payload, endpoint=endpoint, case=case)
-    return redirect(url_for("transmit"))
+    return redirect(url_for("cases_overview"))
 
 
 @app.route("/upload_case_by_id", methods=["GET", "POST"])
@@ -636,7 +643,7 @@ def delete_case(case_id):
     db.session.delete(case)
     db.session.commit()
     flash("Fall wurde gelöscht.", "success")
-    return redirect(url_for("drafts"))
+    return redirect(url_for("cases_overview"))
 
 
 @app.route("/onko_import_wiz_step_1_select")

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Fallübersicht – OncoApp{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h3>Fallübersicht</h3>
+
+    <!-- Consent/TAN neu laden Button -->
+    <form action="{{ url_for('reload_consent_tan') }}" method="post" id="reload-form" class="mb-3">
+        <button type="submit" class="btn btn-warning">Consent und Tan neu laden</button>
+    </form>
+
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+        <tr>
+            <th>Patienten-ID</th>
+            <th>GS Fall ID</th>
+            <th>LMU Fall ID</th>
+            <th>Broad Consent</th>
+            <th>TAN</th>
+            <th>Abgeschlossen</th>
+            <th>Gesendet</th>
+            <th>Aktion</th>
+            <th>Senden</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        {% for c in cases %}
+        <tr class="
+            {% if c.transmitted %}table-secondary{% elif c.is_finalized %}table-warning{% else %}table-success{% endif %}
+        ">
+            <td>{{ c.pat_id }}</td>
+            <td>{{ c.case_id }}</td>
+            <td>{{ c.local_case_id }}</td>
+
+            <!-- Broad Consent -->
+            <td class="text-center">{% if c.research_consent %}✅{% else %}❌{% endif %}</td>
+
+            <!-- TAN -->
+            <td class="text-center">{% if c.tan_c %}✅{% else %}❌{% endif %}</td>
+
+            <!-- Abgeschlossen -->
+            <td class="text-center">{% if c.is_finalized %}✅{% else %}❌{% endif %}</td>
+
+            <!-- Gesendet -->
+            <td class="text-center">{% if c.transmitted %}✅{% else %}❌{% endif %}</td>
+
+            <!-- Aktion -->
+            <td>
+                <div class="btn-group-vertical w-100 gap-1">
+
+                    <!-- Aufschließen -->
+                    {% if c.is_finalized and not c.transmitted %}
+                    <form action="{{ url_for('unlock_case', case_id=c.case_id) }}" method="post" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">Aufschließen</button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Löschen -->
+                    {% if not c.transmitted %}
+                    <form action="{{ url_for('delete_case', case_id=c.case_id) }}" method="post"
+                          onsubmit="return confirm('Fall wirklich löschen?');" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-danger w-100">Löschen</button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Bearbeiten -->
+                    {% if not c.is_finalized and not c.transmitted %}
+                    <form action="{{ url_for('edit_case', case_id=c.case_id) }}" method="get" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">Bearbeiten</button>
+                    </form>
+                    {% endif %}
+
+                    <!-- JSON anzeigen -->
+                    <form action="{{ url_for('show_json', case_id=c.case_id) }}" method="post" class="d-block w-100" target="_blank">
+                        <button type="submit" class="btn btn-sm btn-info w-100">JSON anzeigen</button>
+                    </form>
+
+                </div>
+            </td>
+
+            <!-- Senden -->
+            <td>
+                <div class="btn-group-vertical w-100 gap-1">
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='TEST') }}" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-warning w-100"
+                                {% if not c.is_finalized or not c.tan_c %}disabled{% endif %}>
+                            Senden an TEST
+                        </button>
+                    </form>
+
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='PROD') }}" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-success w-100"
+                                {% if not c.is_finalized or not c.tan_c %}disabled{% endif %}>
+                            Senden an PROD
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if not cases %}
+    <p>Keine Fälle vorhanden.</p>
+    {% endif %}
+
+</div>
+
+<script>
+document.getElementById('reload-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  fetch(this.action, { method: 'POST' })
+    .then(() => { alert('Consent und TAN wurden neu geladen.'); })
+    .catch(() => { alert('Fehler beim Starten des Reload-Prozesses.'); });
+});
+</script>
+
+{% endblock %}
