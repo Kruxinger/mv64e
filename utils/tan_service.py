@@ -6,7 +6,7 @@ from requests import Session
 import os
 import logging
 from utils.keycloak import get_keycloak_token
-from utils.logging import log_entry
+from utils.logging import log_entry_and_flash
 
 GPAS_URL = os.environ.get("GPAS_URL")
 GPAS_WSDL = os.environ.get("GPAS_WSDL")
@@ -30,11 +30,11 @@ def generate_tan(case_id: str) -> str:
     try:
         result = client.service.getOrCreatePseudonymFor(value=case_id, domainName="arbeitsnummer")
         tan = client.service.createPseudonymFor(value=result, domainName="vorgangsnummer")
-        log_entry(case_id, "", "info", "TAN created properly")
+        log_entry_and_flash(case_id, "", "info", "TAN wurde generiert")
         return tan
     except Fault as e:
-        log_entry(case_id,"", "error",e.message)
+        log_entry_and_flash(case_id, "", "error",f"TAN konnte nicht erzeugt werden. Fehler: {e.message}")
         raise RuntimeError(f"SOAP Fault: {e}")
     except Exception as e:
-        log_entry(case_id, "", "error", str(e))
+        log_entry_and_flash(case_id, "", "error", f"gPAS konnte nicht aufgerufen werden. Fehler: {str(e)}")
         raise RuntimeError(f"gPAS error: {e}")

@@ -10,23 +10,17 @@ from concurrent.futures import ThreadPoolExecutor
 from flask import send_from_directory, jsonify
 import os
 
-# Third-party libraries
-import requests
 from flask import Flask, render_template, request, redirect, flash, url_for, session
 from sqlalchemy import func
 
-# Local modules
 from utils.check_services import check_services
 from utils.consent import get_research_consent
-from utils.generate_test_data import generate_test_data
-from utils.logging import log_entry
-from utils import onkostar_interface
+from utils.logging import log_entry_and_flash
 from utils.onkostar_interface import OnkostarInterface
 from utils.tan_service import generate_tan
 from utils.tasks import fetch_research_consent_async, generate_tan_async
 from utils.transmit_utils import build_oncology_payload, send
 
-# Models (assumes models.py defines db, Case, Transmission, Constant, Log, ServiceStatus)
 from models import db, Case, Transmission, Constant, Log, ServiceStatus
 
 app = Flask(__name__)
@@ -322,7 +316,7 @@ def add_case():
         db.session.commit()
 
         # ---- Logging & Hintergrundjobs ----
-        log_entry(case_id, pat_id, "info", f"Case {case_id} wurde angelegt")
+        log_entry_and_flash(case_id, pat_id, "info", f"Case {case_id} wurde angelegt", True)
         executor.submit(fetch_research_consent_async, new_case.id, pat_id)
         executor.submit(generate_tan_async, new_case.id, case_id)
 
@@ -352,7 +346,8 @@ def edit_constants():
             else:
                 db.session.add(Constant(key=key, value=value))
         db.session.commit()
-        flash("Konstanten wurden aktualisiert", "success")
+        log_entry_and_flash("","","success","Konstanten wurden aktualisiert", True)
+
         return redirect("/admin/constants")
 
     consts = get_constants()
@@ -413,11 +408,11 @@ def edit_case(case_id):
         case.mv_consent = mv_consent_json
         try:
             db.session.commit()
-            log_entry(case.case_id, pat_id, "info", f"Case edited")
+            log_entry_and_flash(case.case_id, pat_id, "info", f"Änderungen gespeichert", True)
             executor.submit(fetch_research_consent_async, case.id, pat_id)
             executor.submit(generate_tan_async, case.id, case_id)
         except Exception as e:
-            log_entry(case.case_id, pat_id, "error", f"Could not commit changes: {str(e)}")
+            log_entry_and_flash(case.case_id, pat_id, "error", f"Änderungen konnten nicht gespeichert werden. Fehler: {str(e)}", True)
         return redirect("/cases_overview")
 
     case = Case.query.filter_by(case_id=case_id).first_or_404()
@@ -432,7 +427,7 @@ def edit_case(case_id):
 def show_json(case_id):
     case = Case.query.filter_by(case_id=case_id).first()
     if not case:
-        flash(f"Case {case_id} nicht gefunden.", "danger")
+        flash(f"Case {case_id} nicht gefunden.", "error")
         return redirect(url_for("cases_overview"))
 
     if getattr(case, "tan_c", None) is None:
@@ -470,7 +465,7 @@ def send_case():
     endpoint = request.args.get("bfarm_endpoint")
     case = Case.query.filter_by(case_id=case_id).first()
     if not case:
-        flash(f"Case {case_id} nicht gefunden.", "danger")
+        flash(f"Case {case_id} nicht gefunden.", "error")
         return redirect(url_for("cases_overview"))
 
     if getattr(case, "tan_c", None) is None:
@@ -589,7 +584,7 @@ def onko_import_wiz_step_1():
 
         # Der Patient hat KEIN DNPM Klinik/Anamnese Formular mit einem Datum != None => Nicht (richtig) dokumentiert
         if len(with_date) == 0:
-            flash("Kein DNPM Klinik/Anamnese Formular hat ein valides Datum!", "danger")
+            flash("Kein DNPM Klinik/Anamnese Formular hat ein valides Datum!", "error")
             return redirect(url_for("onko_import_wiz_step_1"))
 
         # Es gibt mehr als ein DNPM Klinik/Anamnese Formular mit validem Datum => Möglich, bei mehreren Einschlüssen

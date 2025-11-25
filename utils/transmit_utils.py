@@ -8,7 +8,7 @@ import requests
 from flask import flash
 
 from models import Transmission, Case
-from utils.logging import log_entry
+from utils.logging import log_entry_and_flash
 import logging
 
 
@@ -51,27 +51,22 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
 
         # Logging-Text
         if ok:
-            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt."
+            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt.\n{response_json}"
             if is_prod:
                 case.transmitted = True
                 db.session.add(case)
         else:
-            msg = f"Case {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code})."
+            msg = f"Fall {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code}).\n{response_json}"
 
         # Log schreiben
-        log_entry(case.case_id, case.pat_id,
-                  "info" if ok else "error",
-                  msg)
+        log_entry_and_flash(case.case_id, case.pat_id,"info" if ok else "error",msg, True)
 
-        # Flash ausgeben – immer mit response_json
-        flash(f"{msg}\n{response_json}", flash_category)
 
         db.session.commit()
 
     except Exception as e:
         db.session.rollback()
-        log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}")
-        flash(f"Fehler beim Senden von Case {case.case_id}: {e}", "danger")
+        log_entry_and_flash(case.case_id, case.pat_id, "error", f"Fall {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}", True)
         response_json = {}
 
     return response_json

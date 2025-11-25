@@ -4,7 +4,7 @@ import os
 import re
 
 from flask import flash
-from utils.logging import log_entry
+from utils.logging import log_entry_and_flash
 from sqlalchemy import create_engine, text, Engine
 from models import Case, Constant
 
@@ -247,7 +247,5 @@ class OnkostarInterface:
 
 
     def log_and_flash(self, msg, category):
-        category = 'danger' if category =='error' else category
-        flash(msg, category)
-        log_entry("","",category,msg)
+        log_entry_and_flash("", "", category, msg, True)
 

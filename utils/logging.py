@@ -5,6 +5,8 @@ from typing import Literal
 
 from datetime import datetime
 
+from flask import flash
+
 DB_HOST = os.environ.get("POSTGRES_HOST", "db")
 DB_NAME = os.environ.get("POSTGRES_DB", "onco")
 DB_USER = os.environ.get("POSTGRES_USER", "onco_user")
@@ -17,8 +19,23 @@ def get_conn():
         user=DB_USER,
         password=DB_PASSWORD
     )
+def flash_msg(case_id, pat_id, level: Literal["success","info","error","warning"], message):
+    flash_msg = message
+    if case_id not in ("", None) or pat_id not in ("", None):
+        flash_msg += " (<placeholder_case> | <placeholder_pat>)"
+    if case_id not in ("", None):
+        flash_msg = flash_msg.replace("<placeholder_case>", f"CaseID: {case_id}")
+    else:
+        flash_msg = flash_msg.replace("<placeholder_case>", "")
+    if pat_id not in ("", None):
+        flash_msg = flash_msg.replace("<placeholder_case>", f"PatID: {pat_id}")
+    else:
+        flash_msg = flash_msg.replace("<placeholder_case>", "")
+    flash(flash_msg, category=level)
 
-def log_entry(case_id, pat_id, level: Literal["info","error","warning"], message):
+def log_entry_and_flash(case_id, pat_id, level: Literal["success", "info", "error", "warning"], message, do_flash=False):
+    if do_flash:
+        flash_msg(case_id, pat_id, level, message)
     """Schreibt einen Logeintrag in die Datenbank."""
     conn = get_conn()
     cur = conn.cursor()
@@ -33,3 +50,8 @@ def log_entry(case_id, pat_id, level: Literal["info","error","warning"], message
     finally:
         cur.close()
         conn.close()
+
+
+
+
+

@@ -11,12 +11,7 @@
     <!-- Navigation -->
     {% include 'navbar.html' %}
 
-    <!-- Hauptinhalt -->
-    <main class="container my-4 flex-grow-1">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
+    <!-- Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <div class="flash-messages">
@@ -29,6 +24,13 @@
     </div>
   {% endif %}
 {% endwith %}
+
+    <!-- Hauptinhalt -->
+    <main class="container my-4 flex-grow-1">
+        {% block content %}{% endblock %}
+    </main>
+
+
     <footer class="bg-dark text-light py-3 mt-auto">
         <div class="container text-center small">
             &copy; {{ year }} Stephan Heinicke – Alle Rechte vorbehalten.
