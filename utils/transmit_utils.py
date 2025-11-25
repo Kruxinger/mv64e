@@ -44,18 +44,17 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
         if not ok:
             msg = f"Fall {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code}).\n{response_json}"
             log_entry_and_flash(case.case_id, case.pat_id, "error", msg, True)
-            return
-        msg = f"Fall {case.case_id}: Übermittlung an {target_name} erfolgreich (Status {status_code})."
-        if success_flag is False:
+        elif ok and not success_flag:
+            msg = f"Fall {case.case_id}: Übermittlung an {target_name} erfolgreich (Status {status_code})."
             msg += f"\nNachricht konnte NICHT verarbeitet werden:\n{response_json}"
             log_entry_and_flash(case.case_id, case.pat_id, "error", msg, True)
-        msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt.\n{response_json}"
-        log_entry_and_flash(case.case_id, case.pat_id, "success", msg, True)
-
-        if is_prod:
-            case.transmitted = True
-            db.session.add(case)
-            db.session.commit()
+        elif ok and success_flag:
+            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt.\n{response_json}"
+            log_entry_and_flash(case.case_id, case.pat_id, "success", msg, True)
+            if is_prod:
+                case.transmitted = True
+                db.session.add(case)
+                db.session.commit()
 
     except Exception as e:
         log_entry_and_flash(case.case_id, case.pat_id, "error", f"Fall {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}", True)

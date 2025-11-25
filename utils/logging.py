@@ -28,9 +28,11 @@ def flash_msg(case_id, pat_id, level: Literal["success","info","error","warning"
     else:
         flash_msg = flash_msg.replace("<placeholder_case>", "")
     if pat_id not in ("", None):
-        flash_msg = flash_msg.replace("<placeholder_case>", f"PatID: {pat_id}")
+        flash_msg = flash_msg.replace("<placeholder_pat>", f"PatID: {pat_id}")
     else:
-        flash_msg = flash_msg.replace("<placeholder_case>", "")
+        flash_msg = flash_msg.replace("<placeholder_pat>", "")
+    if level == "error":
+        level = "danger"
     flash(flash_msg, category=level)
 
 def log_entry_and_flash(case_id, pat_id, level: Literal["success", "info", "error", "warning"], message, do_flash=False):
