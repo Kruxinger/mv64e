@@ -38,34 +38,26 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
         ok = status_code in (200, 202)
         is_prod = endpoint == "PROD"
         success_flag = response_json.get("success")
-
         target_name = "BfArM" if is_prod else "Testknoten"
 
-        # Flash-Kategorie abhängig vom success-Flag
-        if success_flag is False:
-            flash_category = "warning"  # Gelb
-        elif ok:
-            flash_category = "success"  # Grün
-        else:
-            flash_category = "danger"  # Rot
 
-        # Logging-Text
-        if ok:
-            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt.\n{response_json}"
-            if is_prod:
-                case.transmitted = True
-                db.session.add(case)
-        else:
+        if not ok:
             msg = f"Fall {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code}).\n{response_json}"
+            log_entry_and_flash(case.case_id, case.pat_id, "error", msg, True)
+            return
+        msg = f"Fall {case.case_id}: Übermittlung an {target_name} erfolgreich (Status {status_code})."
+        if success_flag is False:
+            msg += f"\nNachricht konnte NICHT verarbeitet werden:\n{response_json}"
+            log_entry_and_flash(case.case_id, case.pat_id, "error", msg, True)
+        msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt.\n{response_json}"
+        log_entry_and_flash(case.case_id, case.pat_id, "success", msg, True)
 
-        # Log schreiben
-        log_entry_and_flash(case.case_id, case.pat_id,"info" if ok else "error",msg, True)
-
-
-        db.session.commit()
+        if is_prod:
+            case.transmitted = True
+            db.session.add(case)
+            db.session.commit()
 
     except Exception as e:
-        db.session.rollback()
         log_entry_and_flash(case.case_id, case.pat_id, "error", f"Fall {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}", True)
         response_json = {}
 
