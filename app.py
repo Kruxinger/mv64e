@@ -615,7 +615,7 @@ def onko_import_wiz_step_1():
 
     return render_template("onko_import_wiz_step_1.html")
 
-@app.route("case_exists_handling", methods=["GET","POST"])
+@app.route("/case_exists_handling", methods=["GET","POST"])
 def case_exists_handling():
     if request.method == "POST":
         keep_case = Case.query.filter_by(id=request.form.get("keep")).first()
