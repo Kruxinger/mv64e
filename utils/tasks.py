@@ -8,10 +8,9 @@ def generate_tan_async(id, case_id):
     from app import app
     def task():
         with app.app_context():
-            tan = generate_tan(case_id)
-            case:Case = Case.query.filter_by(id=id).first()
-            if case:
-                case.tan_c = tan
+            case: Case = Case.query.filter_by(id=id).first()
+            if case and case.tan_c in (None, ""):
+                case.tan_c = generate_tan(case_id)
                 db.session.commit()
     threading.Thread(target=task).start()
 

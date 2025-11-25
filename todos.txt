@@ -1,0 +1,11 @@
+DB Anbindung Consents
+
+
+falsche Daten:
+* Inikationsboard datum
+* Fallnummer: LMU-4072
+
+Bug fix:
+* mehrfach hinzufügen
+* Übertragung hinzufügen
+* Send Datum

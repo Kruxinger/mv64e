@@ -15,9 +15,10 @@ import logging
 def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
     from app import db
     mv64_endpoint = os.environ.get(f"BFARM_ENDPOINT_{endpoint}")
+    mv64_endpoint_api_key = os.environ.get(f"BFARM_API_KEY_{endpoint}",)
     try:
         headers = {
-            "Authorization": f"X-API-KEY {os.environ.get("BFARM_API_KEY","")}",
+            "Authorization": f"X-API-KEY {mv64_endpoint_api_key}",
             "Content-Type": "application/json",
         }
 

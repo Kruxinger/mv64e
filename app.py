@@ -32,6 +32,7 @@ from models import db, Case, Transmission, Constant, Log, ServiceStatus
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme")
+DOKU_PASSWORD = os.environ.get("DOKU_PASSWORD", "changeme")
 
 executor = ThreadPoolExecutor(max_workers=4)
 
@@ -79,7 +80,6 @@ def get_constants():
     return {row.key: row.value for row in rows}
 
 
-
 def update_case_field(case_id, field, value):
     """Update one field on Case (commits)"""
     with app.app_context():
@@ -115,7 +115,6 @@ def periodic_service_check(interval_hours=4):
     t.start()
 
 
-
 # ---------------------
 # Routes
 # ---------------------
@@ -126,21 +125,27 @@ def login():
     if request.method == "POST":
         password = request.form.get("password", "")
         if password == ADMIN_PASSWORD:
-            session['logged_in'] = True
+            session['logged_in_admin'] = True
             next_url = session.pop('next', url_for("dashboard"))
+            return redirect(next_url)
+        elif password == DOKU_PASSWORD:
+            session['logged_in_doku'] = True
+            next_url = session.pop('next', url_for("add_case"))
             return redirect(next_url)
         else:
             return render_template("login.html", error="Falsches Passwort")
     return render_template("login.html")
+
 
 # ---- Before Request Hook ----
 @app.before_request
 def require_login():
     if request.endpoint in ("login", "static", "favicon"):
         return  # login-Seite und statische Dateien ausnehmen
-    if not session.get('logged_in'):
+    if not session.get('logged_in_admin') and not session.get('logged_in_doku'):
         session['next'] = request.path
         return redirect(url_for("login"))
+
 
 
 
@@ -203,10 +208,12 @@ def dashboard():
         transmitted_percent=transmitted_percent
     )
 
+
 @app.route("/logout")
 def logout():
-    session.clear()           # oder: session.pop("logged_in", None)
+    session.clear()  # oder: session.pop("logged_in", None)
     return redirect(url_for("login"))
+
 
 @app.route("/", methods=["GET", "POST"])
 def add_case():
@@ -300,7 +307,6 @@ def add_case():
     return render_template("add_case.html")
 
 
-
 @app.route("/reload_consent_tan", methods=["POST"])
 def reload_consent_tan():
     cases = Case.query.filter(Case.transmitted.is_(False)).all()
@@ -372,7 +378,7 @@ def edit_case(case_id):
             decision_field = request.form.get(f"mv_consent_scope_{domain_key}_decision", "").strip().lower()
             if decision_field not in ("permit", "deny"):
                 decision_field = "deny"
-            return {"type": decision_field,"date": date_field, "domain": domain_name}
+            return {"type": decision_field, "date": date_field, "domain": domain_name}
 
         mv_consent_json = {
             "presentationDate": request.form.get("mv_consent_presentation_date", "").strip(),
@@ -394,11 +400,9 @@ def edit_case(case_id):
             log_entry(case.case_id, pat_id, "error", f"Could not commit changes: {str(e)}")
         return redirect("/drafts")
 
-
     case = Case.query.filter_by(case_id=case_id).first_or_404()
     case_serialized = serialize_model_dates(case)
     return render_template("add_case.html", case=case_serialized)
-
 
 
 @app.route("/transmit")
@@ -416,6 +420,7 @@ def transmit():
         cases_serialized.append(d)
     return render_template("transmit.html", cases=cases_serialized)
 
+
 @app.route("/show_json/<case_id>", methods=["POST"])
 def show_json(case_id):
     case = Case.query.filter_by(case_id=case_id).first()
@@ -430,6 +435,7 @@ def show_json(case_id):
     consts = get_constants()
     payload = build_oncology_payload(serialize_model_dates(case), consts)
     return jsonify(payload)
+
 
 @app.route("/transmissions/<int:index>")
 def show_transmission(index=0):
@@ -449,6 +455,7 @@ def show_transmission(index=0):
         index=index + 1,  # für Anzeige 1-basiert
         total=total
     )
+
 
 @app.route("/send_case", methods=["POST"])
 def send_case():
@@ -471,6 +478,64 @@ def send_case():
     return redirect(url_for("transmit"))
 
 
+@app.route("/upload_case_by_id", methods=["GET", "POST"])
+def upload_case_by_id():
+    if request.method == "POST":
+        pat_id = request.args.get("pat_id")
+        action = request.args.get("action")
+        mode = request.args.get("mode")
+        # TODO: Not implemented
+
+    else:
+        s = {
+            "submission": {
+                "submissionDate": "2025-11-05",
+                "type": "initial",
+                "submitterId": "999950000",
+                "genomicDataCenterId": "GRZHD0003",
+                "clinicalDataNodeId": "KDKHD0006",
+                "diseaseType": "oncological"
+            }
+        }
+        j = {
+            "description": "With this endpoint, you can get a BfArM JSON, generate a new case and (optionally) send it."
+                           "All based on a Pat ID."
+                           "It will return error messages if anything is wrong.",
+            "post_parameters": {
+                "action": {
+                    "description": "Defines, what will be done: \nCREATE_JSON: Creates a JSON in BaArM format and returns "
+                                   "it. (Nothing will be sent to Köln or any other endpoint)"
+                                   "\nCREATE_CASE: Creates a 'Case' on this applications context. It will only be created. "
+                                   "You can check it in the frontend and send it manually\n"
+                                   "CREATE_AND_SEND_CASE: 'fire and forget' - A new case will be created and sent to BfArM."
+                                   "You will receive the response from the given endpoint",
+                    "type": "enum[CREATE_JSON|CREATE_CASE|CREATE_AND_SEND_CASE]",
+                    "required": True
+                },
+                "pat_id": {
+                    "description": "The patient ID",
+                    "type": "string",
+                    "required": True,
+                    "example": "0021335993"
+                },
+                "mode": {
+                    "description": "Defines whether you want to test the app or send prod data",
+                    "type": "enum[PROD|TEST]",
+                    "required": False,
+                    "default": "TEST"
+                },
+                "submission": {
+                    "description": "You can define the submission data. If you do, you have to pass a complete submission set",
+                    "type": "dict",
+                    "required": False,
+                    "default": "Set by the values in the db (you can set them via frontend)",
+                    "example": json.dumps(s)
+                }
+            }
+        }
+        return jsonify(j)
+
+
 @app.route("/logs")
 def view_logs():
     case_id = request.args.get("case_id", "").strip()
@@ -489,7 +554,7 @@ def view_logs():
     return render_template("logs.html", logs=logs_serialized, case_id=case_id)
 
 
-@app.route("/onko_import_wiz_step_1", methods=["GET","POST"])
+@app.route("/onko_import_wiz_step_1", methods=["GET", "POST"])
 def onko_import_wiz_step_1():
     if request.method == "POST":
         # Hole die pat_id aus Eingabemaske
@@ -504,10 +569,10 @@ def onko_import_wiz_step_1():
             return redirect(url_for("onko_import_wiz_step_1"))
 
         # Nun suchen wir das "richtige" DNPM Klinik/Anamnese Formular
-        prod_ids_dates= os_interface.get_anamnese_procedures()
+        prod_ids_dates = os_interface.get_anamnese_procedures()
 
         # Der Patient hat KEIN DNPM Klinik/Anamnese Formular
-        if len(prod_ids_dates)==0:
+        if len(prod_ids_dates) == 0:
             os_interface.log_and_flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "error")
             return redirect(url_for("onko_import_wiz_step_1"))
 
@@ -524,22 +589,44 @@ def onko_import_wiz_step_1():
         # => Datum muss gewählt werden
         if len(with_date) > 1:
             dates = [p["beginndatum"].strftime('%d.%m.%Y') for p in prod_ids_dates]
-            return redirect(url_for("onko_import_wiz_step_1_select",pat_id=patient_id, dates=dates))
+            return redirect(url_for("onko_import_wiz_step_1_select", pat_id=patient_id, dates=dates))
 
         # Es gibt genau ein Formular mit datum => Best Case
         # Daten werden direkt geladen und in der Maske angezeigt
         # else
         os_interface.procedure_id = with_date[0]['id']
-        case = os_interface.get_case_data()
-        case.tan_c = generate_tan(case_id=case.case_id)
-        case.research_consent = get_research_consent(case.pat_id)
+        new_case = os_interface.get_case_data()
+        db.session.query()
+        case = Case.query.filter_by(case_id=new_case.case_id, pat_id=new_case.pat_id).first_or_404()
+        if case and case.transmitted:
+            flash(f"Der Patient {case.pat_id} mit der Fallnummer {case.case_id} wurde bereits ans BfArM "
+                  f"übertragen und kann nicht erneut importiert werden!", "warning")
+            return redirect(url_for("onko_import_wiz_step_1"))
+        new_case.tan_c = generate_tan(case_id=case.case_id)
+        new_case.research_consent = get_research_consent(case.pat_id)
         db.session.add(case)
         db.session.commit()
+        if case:
+            if case.is_finalized:
+                flash("Hinweis: Der bereits existierende Fall ist bereits als abgeschlossen markiert!", "warning")
+            return redirect(url_for("case_exists_handling", new_case_id=new_case.case_id, existing_case_id=case.case_id))
 
-
-        return redirect(url_for("edit_case", case_id=case.case_id))
+        return redirect(url_for("edit_case", case_id=new_case.case_id))
 
     return render_template("onko_import_wiz_step_1.html")
+
+@app.route("case_exists_handling", methods=["GET","POST"])
+def case_exists_handling():
+    if request.method == "POST":
+        keep_case = Case.query.filter_by(id=request.form.get("keep")).first()
+        remove_case = Case.query.filter_by(id=request.form.get("remove")).first()
+        db.session.delete(remove_case)
+        db.session.commit()
+        return redirect(url_for("edit_case", case_id=keep_case.case_id))
+    existing_case_id = request.args.get("existing_case_id")
+    new_case_id = request.args.get("new_case_id")
+    return render_template("case_exists_handling.html", existing_case_id=existing_case_id, new_case_id=new_case_id)
+
 
 @app.post("/cases/<case_id>/delete")
 def delete_case(case_id):
@@ -549,6 +636,7 @@ def delete_case(case_id):
     flash("Fall wurde gelöscht.", "success")
     return redirect(url_for("drafts"))
 
+
 @app.route("/onko_import_wiz_step_1_select")
 def onko_import_wiz_step_1_select():
     if request.method == "POST":
@@ -557,7 +645,7 @@ def onko_import_wiz_step_1_select():
         os_interface = OnkostarInterface()
         os_interface.get_pat_data(patient_id)
         prod_ids_dates = os_interface.get_anamnese_procedures()
-        os_interface.procedure_id = next(p['id'] for p in prod_ids_dates if p['datum']==procedure_date)
+        os_interface.procedure_id = next(p['id'] for p in prod_ids_dates if p['datum'] == procedure_date)
         case = os_interface.get_case_data()
         case.tan_c = generate_tan(case_id=case.case_id)
         case.research_consent = get_research_consent(case.pat_id)
@@ -567,6 +655,7 @@ def onko_import_wiz_step_1_select():
         return redirect(url_for("edit_case", case_id=case.id))
 
     return render_template("onko_import_wiz_step_1.html")
+
 
 def init_constants():
     REQUIRED = {
@@ -591,6 +680,7 @@ def init_constants():
 
     db.session.commit()
 
+
 if __name__ == "__main__":
     host = os.environ.get("FLASK_RUN_HOST", "0.0.0.0")
     port = int(os.environ.get("FLASK_RUN_PORT", 8000))
@@ -608,4 +698,3 @@ if __name__ == "__main__":
 
     print(f"Starting OncoApp on {host}:{port} (debug={debug})")
     app.run(host=host, port=port, debug=debug)
-

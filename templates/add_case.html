@@ -30,6 +30,7 @@
         <div class="col-md-4">
             <label class="form-label">Geschlecht</label>
             <select name="gender" class="form-select">
+                <option></option>
                 <option value="male" {% if case and case.gender=='male' %}selected{% endif %}>männlich</option>
                 <option value="female" {% if case and case.gender=='female' %}selected{% endif %}>weiblich</option>
                 <option value="other" {% if case and case.gender=='other' %}selected{% endif %}>divers</option>
@@ -52,6 +53,7 @@
         <div class="col-md-4">
             <label class="form-label">Coverage Type</label>
             <select name="coverage_type" class="form-select">
+                <option></option>
                 {% for ctype in ['GKV','PKV','BG','SEL','SOZ','GPV','PPV','BEI','SKT','UNK'] %}
                 <option value="{{ ctype }}" {% if case and case.coverage_type==ctype %}selected{% endif %}>{{ ctype }}
                 </option>
@@ -70,6 +72,7 @@
         <div class="col-md-4">
             <label class="form-label">Include Decision</label>
             <select name="decision_to_include" class="form-select">
+                <option></option>
                 <option value="true" {% if case and case.decision_to_include %}selected{% endif %}>Ja</option>
                 <option value="false" {% if case and not case.decision_to_include %}selected{% endif %}>Nein</option>
             </select>
@@ -117,6 +120,7 @@
         <div class="col-md-4">
             <label class="form-label">ECOG Score</label>
             <select name="ecog" class="form-select">
+                <option></option>
                 {% for score in ['0','1','2','3','4','5','unknown','notApplicable'] %}
                 <option value="{{ score }}" {% if case and case.ecog==score %}selected{% endif %}>{{ score }}</option>
                 {% endfor %}
@@ -140,6 +144,7 @@
         <div class="col-md-4">
             <label class="form-label">Library Type</label>
             <select name="library_type" class="form-select">
+                <option></option>
                 {% for lib in ['wes','wgs','wgs_lr','panel','none'] %}
                 <option value="{{ lib }}" {% if case and case.library_type==lib %}selected{% endif %}>{{ lib }}</option>
                 {% endfor %}
@@ -183,6 +188,7 @@
             </div>
             <div class="col-md-3">
                 <select name="mv_consent_scope_{{ scope }}_decision" class="form-select">
+                    <option></option>
                     <option value="permit" {% if case and case.mv_consent and
                             case.mv_consent.scope[loop.index0].type=='permit' %}selected{% endif %}>permit
                     </option>
