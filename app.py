@@ -13,6 +13,7 @@ import os
 from flask import Flask, render_template, request, redirect, flash, url_for, session
 from sqlalchemy import func
 
+from utils import data_server_interface
 from utils.check_services import check_services
 from utils.consent import get_research_consent
 from utils.logging import log_entry_and_flash
@@ -590,32 +591,13 @@ def onko_import_wiz_step_1():
         # Es gibt mehr als ein DNPM Klinik/Anamnese Formular mit validem Datum => Möglich, bei mehreren Einschlüssen
         # => Datum muss gewählt werden
         if len(with_date) > 1:
-            dates = [p["beginndatum"].strftime('%d.%m.%Y') for p in prod_ids_dates]
+            dates = [p["beginndatum"].strftime('%d.%m.%Y') for p in prod_ids_dates if p["beginndatum"] is not None]
             return redirect(url_for("onko_import_wiz_step_1_select", pat_id=patient_id, dates=dates))
 
         # Es gibt genau ein Formular mit datum => Best Case
         # Daten werden direkt geladen und in der Maske angezeigt
         # else
-        os_interface.procedure_id = with_date[0]['id']
-        new_case = os_interface.get_case_data()
-        db.session.query()
-        case = Case.query.filter_by(case_id=new_case.case_id, pat_id=new_case.pat_id).first()
-
-        if case and case.transmitted:
-            logging.error("**" * 20)
-            flash(f"Der Patient {case.pat_id} mit der Fallnummer {case.case_id} wurde bereits ans BfArM "
-                  f"übertragen und kann nicht erneut importiert werden!", "warning")
-            return redirect(url_for("onko_import_wiz_step_1"))
-        new_case.tan_c = generate_tan(case_id=new_case.case_id)
-        new_case.research_consent = get_research_consent(new_case.pat_id)
-        db.session.add(new_case)
-        db.session.commit()
-        if case:
-            if case.is_finalized:
-                flash("Hinweis: Der bereits existierende Fall ist bereits als abgeschlossen markiert!", "warning")
-            return redirect(url_for("case_exists_handling", new_case_id=new_case.id, existing_case_id=case.id))
-
-        return redirect(url_for("edit_case", case_id=new_case.case_id))
+        return import_from_onkostar(patient_id, with_date[0]['id'])
 
     return render_template("onko_import_wiz_step_1.html")
 
@@ -640,8 +622,46 @@ def delete_case(case_id):
     flash("Fall wurde gelöscht.", "success")
     return redirect(url_for("cases_overview"))
 
+def import_from_onkostar(pat_id, procedure_id):
+    os_interface = OnkostarInterface()
+    os_interface.procedure_id = procedure_id
 
-@app.route("/onko_import_wiz_step_1_select")
+    os_interface.get_pat_data(pat_id)
+    new_case = os_interface.get_case_data()
+    if new_case.case_id in (None, ""):
+        gs_ids = data_server_interface.get_fallnummern(new_case.pat_id)
+        if len(gs_ids) == 1:
+            logging.error("**" * 20)
+            logging.error(str(gs_ids[0]))
+            new_case.case_id = str(gs_ids[0])
+        elif len(gs_ids) == 0:
+            flash(f"Das Formular hat keine 'Fallnummer MV §64e'. Diese ist Voraussetzung für einen Import", "danger")
+            return redirect(url_for("onko_import_wiz_step_1"))
+        elif len(gs_ids) > 1:
+            flash(f"Es wurden mehrere GS Fallnummern zum angegeben Patienten gefunden: {gs_ids}.\n"
+                  f"Eine eindeutige Fallnummer ist Voraussetzung für einen Import", "danger")
+            return redirect(url_for("onko_import_wiz_step_1"))
+
+    case = Case.query.filter_by(case_id=new_case.case_id, pat_id=new_case.pat_id).first()
+
+    if case and case.transmitted:
+        flash(f"Der Patient {case.pat_id} mit der Fallnummer {case.case_id} wurde bereits ans BfArM "
+              f"übertragen und kann nicht erneut importiert werden!", "warning")
+        return redirect(url_for("onko_import_wiz_step_1"))
+
+    new_case.tan_c = generate_tan(case_id=new_case.case_id)
+    new_case.research_consent = get_research_consent(new_case.pat_id)
+    db.session.add(new_case)
+    db.session.commit()
+    if case:
+        if case.is_finalized:
+            flash("Hinweis: Der bereits existierende Fall ist bereits als abgeschlossen markiert!", "warning")
+        return redirect(url_for("case_exists_handling", new_case_id=new_case.id, existing_case_id=case.id))
+
+    return redirect(url_for("edit_case", case_id=new_case.case_id))
+
+
+@app.route("/onko_import_wiz_step_1_select", methods=["GET","POST"])
 def onko_import_wiz_step_1_select():
     if request.method == "POST":
         patient_id = request.form.get("patient_id")
@@ -649,16 +669,15 @@ def onko_import_wiz_step_1_select():
         os_interface = OnkostarInterface()
         os_interface.get_pat_data(patient_id)
         prod_ids_dates = os_interface.get_anamnese_procedures()
-        os_interface.procedure_id = next(p['id'] for p in prod_ids_dates if p['datum'] == procedure_date)
-        case = os_interface.get_case_data()
-        case.tan_c = generate_tan(case_id=case.case_id)
-        case.research_consent = get_research_consent(case.pat_id)
-        db.session.add(case)
-        db.session.commit()
+        prod_id = next(p['id'] for p in prod_ids_dates if p['beginndatum'] is not None and  p["beginndatum"].strftime('%d.%m.%Y') == procedure_date)
+        return import_from_onkostar(patient_id, prod_id)
 
-        return redirect(url_for("edit_case", case_id=case.id))
 
-    return render_template("onko_import_wiz_step_1.html")
+    dates = request.args.getlist("dates")
+    pat_id = request.args.get("pat_id")
+
+
+    return render_template("onko_import_wiz_step_1_select.html",pat_id=pat_id,dates=dates)
 
 
 def init_constants():

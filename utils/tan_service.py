@@ -21,6 +21,8 @@ def get_session():
     return session
 
 def generate_tan(case_id: str) -> str:
+    if case_id in ("", None) or not case_id.isdigit():
+        return ""
     """Generates TAN using gPAS SOAP interface."""
     if not case_id.startswith("00"):
         case_id = f"00{case_id}"

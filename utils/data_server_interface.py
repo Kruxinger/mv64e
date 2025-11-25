@@ -1,3 +1,4 @@
+import logging
 import os
 import psycopg2
 import json
@@ -18,6 +19,25 @@ def get_connection():
     dbname = url_parts[1]
 
     return psycopg2.connect(host=host, port=port, dbname=dbname, user=user, password=password)
+
+def get_fallnummern(pat_id: str) -> list[int]:
+
+    conn = get_connection()
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT fallnummer
+                    FROM genomseq_mapping
+                    WHERE patienten_id = %s
+                    ORDER BY fallnummer
+                """, (pat_id,))
+                rows = cur.fetchall()
+                return [r[0] for r in rows]
+    finally:
+        logging.error("RAN IN ERROR")
+        conn.close()
+
 
 
 def upsert_consent(mv_consent: dict, broad_consent: dict | list, pat_id: str, fallnummer):
