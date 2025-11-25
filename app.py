@@ -597,19 +597,21 @@ def onko_import_wiz_step_1():
         os_interface.procedure_id = with_date[0]['id']
         new_case = os_interface.get_case_data()
         db.session.query()
-        case = Case.query.filter_by(case_id=new_case.case_id, pat_id=new_case.pat_id).first_or_404()
+        case = Case.query.filter_by(case_id=new_case.case_id, pat_id=new_case.pat_id).first()
+
         if case and case.transmitted:
+            logging.error("**" * 20)
             flash(f"Der Patient {case.pat_id} mit der Fallnummer {case.case_id} wurde bereits ans BfArM "
                   f"übertragen und kann nicht erneut importiert werden!", "warning")
             return redirect(url_for("onko_import_wiz_step_1"))
-        new_case.tan_c = generate_tan(case_id=case.case_id)
-        new_case.research_consent = get_research_consent(case.pat_id)
-        db.session.add(case)
+        new_case.tan_c = generate_tan(case_id=new_case.case_id)
+        new_case.research_consent = get_research_consent(new_case.pat_id)
+        db.session.add(new_case)
         db.session.commit()
         if case:
             if case.is_finalized:
                 flash("Hinweis: Der bereits existierende Fall ist bereits als abgeschlossen markiert!", "warning")
-            return redirect(url_for("case_exists_handling", new_case_id=new_case.case_id, existing_case_id=case.case_id))
+            return redirect(url_for("case_exists_handling", new_case_id=new_case.id, existing_case_id=case.id))
 
         return redirect(url_for("edit_case", case_id=new_case.case_id))
 
