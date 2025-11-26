@@ -132,6 +132,8 @@ class OnkostarInterface:
             self.new_case.main_diagnosis_date = res["datumerstdiagnose"]
             self.new_case.main_diagnosis_code = res["icd10"] if res["icd10"] not in (None, "None") else ""
             self.new_case.case_id = res["fallnummermv"]
+            if not re.fullmatch("^(?:\d{8,9}|00\d{8,9})$", self.new_case.case_id):
+                self.new_case.case_id = ""
             self.new_case.histology_code = res["icdo3histologie"] if res["icdo3histologie"] not in (None, "None") else ""
             self.new_case.topography_code = res["icdo3lokalisation"] if res["icdo3lokalisation"] not in (None, "None") else ""
         else:
