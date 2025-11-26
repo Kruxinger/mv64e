@@ -35,7 +35,6 @@ def get_fallnummern(pat_id: str) -> list[int]:
                 rows = cur.fetchall()
                 return [r[0] for r in rows]
     finally:
-        logging.error("RAN IN ERROR")
         conn.close()
 
 
@@ -64,7 +63,7 @@ def upsert_consent(mv_consent: dict, broad_consent: dict | list, pat_id: str, fa
                     # Update
                     cur.execute("""
                         UPDATE genomseq_mapping
-                        SET mc_consent = %s, broad_consent = %s
+                        SET mv_consent = %s, broad_consent = %s
                         WHERE fallnummer = %s AND patienten_id = %s
                     """, (json.dumps(mv_consent), json.dumps(broad_consent), fallnummer_int, pat_id))
                     print("Zeile aktualisiert.")
@@ -72,7 +71,7 @@ def upsert_consent(mv_consent: dict, broad_consent: dict | list, pat_id: str, fa
                     # Insert
                     cur.execute("""
                         INSERT INTO genomseq_mapping 
-                        (fallnummer, patient_id, patienten_id, mc_consent, broad_consent, timestamp)
+                        (fallnummer, patient_id, patienten_id, mv_consent, broad_consent, timestamp)
                         VALUES (%s, %s, %s, %s, %s, now())
                     """, (fallnummer_int, -1, pat_id, json.dumps(mv_consent), json.dumps(broad_consent)))
                     print("Neue Zeile angelegt.")

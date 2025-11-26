@@ -162,8 +162,42 @@ def view_cases():
     cases_serialized = [serialize_model_dates(c) for c in cases]
     return render_template("cases_table.html", cases=cases_serialized, columns=columns)
 
+def clean_db():
+    # Duplikate entstehen, wenn beim Import nicht entscheiden wird, welcher case behalten werden soll, der bestehende
+    # oder der neue, sondern einfach die Seite verlassen wird. Dann soll zum "aufräumen" der case mit der höheren id
+    # also der neue gelöscht werden (der alte könnte z.b. bereits transmitted sein, das geht nicht)
+    # Alle Duplikat-Gruppen finden
+    duplicates = (
+        db.session.query(
+            Case.case_id,
+            Case.pat_id,
+            func.min(Case.id).label("keep_id")     # den zu behaltenden Datensatz
+        )
+        .group_by(Case.case_id, Case.pat_id)
+        .subquery()
+    )
+
+    # Alle Cases finden, die NICHT der niedrigste id-Fall sind
+    to_delete = (
+        db.session.query(Case)
+        .join(
+            duplicates,
+            (Case.case_id == duplicates.c.case_id) &
+            (Case.pat_id == duplicates.c.pat_id)
+        )
+        .filter(Case.id != duplicates.c.keep_id)
+        .all()
+    )
+
+    # 3) Löschen
+    for case in to_delete:
+        db.session.delete(case)
+
+    db.session.commit()
+
 @app.route("/cases_overview")
 def cases_overview():
+    clean_db()
     cases = Case.query.order_by(
         Case.transmitted.asc(),  # false zuerst
         Case.is_finalized.asc(),  # false zuerst
@@ -543,9 +577,11 @@ def upload_case_by_id():
 def view_logs():
     case_id = request.args.get("case_id", "").strip()
     if case_id:
-        logs = Log.query.filter_by(case_id=case_id).order_by(Log.timestamp.desc()).all()
+        logs = Log.query.filter_by(case_id=case_id).order_by(Log.timestamp.asc()).all()
     else:
-        logs = Log.query.order_by(Log.timestamp.desc()).limit(200).all()
+        logs = Log.query.order_by(Log.timestamp.asc()).limit(200).all()
+
+    logging.error(logs[0].timestamp)
 
     # serialize logs for template (isoformat timestamps)
     logs_serialized = [
@@ -631,8 +667,6 @@ def import_from_onkostar(pat_id, procedure_id):
     if new_case.case_id in (None, ""):
         gs_ids = data_server_interface.get_fallnummern(new_case.pat_id)
         if len(gs_ids) == 1:
-            logging.error("**" * 20)
-            logging.error(str(gs_ids[0]))
             new_case.case_id = str(gs_ids[0])
         elif len(gs_ids) == 0:
             flash(f"Das Formular hat keine 'Fallnummer MV §64e'. Diese ist Voraussetzung für einen Import", "danger")
@@ -703,6 +737,10 @@ def init_constants():
 
     db.session.commit()
 
+@app.errorhandler(404)
+def page_not_found(e):
+    # e ist die Ausnahme, enthält z.B. description
+    return render_template("404.html"), 404
 
 if __name__ == "__main__":
     host = os.environ.get("FLASK_RUN_HOST", "0.0.0.0")
