@@ -130,10 +130,10 @@ class OnkostarInterface:
         if len(res) == 1:
             res = res[0]
             self.new_case.main_diagnosis_date = res["datumerstdiagnose"]
-            self.new_case.main_diagnosis_code = res["icd10"]
+            self.new_case.main_diagnosis_code = res["icd10"] if res["icd10"] not in (None, "None") else ""
             self.new_case.case_id = res["fallnummermv"]
-            self.new_case.histology_code = res["icdo3histologie"]
-            self.new_case.topography_code = res["icdo3lokalisation"]
+            self.new_case.histology_code = res["icdo3histologie"] if res["icdo3histologie"] not in (None, "None") else ""
+            self.new_case.topography_code = res["icdo3lokalisation"] if res["icdo3lokalisation"] not in (None, "None") else ""
         else:
             self.log_and_flash("Es wurde kein oder mehrere Einträge in der Tablle 'dk_dnpm_kpa' gefunden", "error")
 
@@ -191,17 +191,15 @@ class OnkostarInterface:
     def get_decision_data(self):
         res = self.get_query_res_as_dict(
             f"SELECT datum, bemerkung FROM dk_tumorkonferenz WHERE id IN ((SELECT id FROM prozedur WHERE patient_id={self.os_pat_id})) "
-            f"AND tk='indikation' AND datum > (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} LIMIT 1)")
+            f"AND tk='indikation' AND datum > (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} LIMIT 1) ORDER BY datum ASC")
         if len(res) == 0:
             self.log_and_flash("Kein Indikationsboard gefunden", "error")
             return False
-        elif len(res) > 1:
-            self.log_and_flash("Mehrere Indikationsboards gefunden", "error")
-            return False
 
         self.new_case.molecular_board_decision_date = res[0]['datum']
-        if re.fullmatch(r"LMU-\d{4,10}", res[0]['bemerkung']):
-            self.new_case.local_case_id = res[0]['bemerkung']
+        m = re.fullmatch(r"(LMU-\d{4,10})(?:-\d+)?", res[0]['bemerkung'])
+        if m:
+            self.new_case.local_case_id = m.group(1)
 
         res = self.get_query_res_as_dict(f"SELECT tk FROM dk_tumorkonferenz WHERE id IN ("
                                          f"(SELECT id FROM prozedur WHERE patient_id={self.os_pat_id})) AND tk='mvgenomseq' "
@@ -230,8 +228,13 @@ class OnkostarInterface:
 
     def get_library_type(self):
         res = self.get_query_res_as_dict(
-            f"SELECT artdersequenzierung FROM dk_molekulargenetik WHERE id IN (SELECT id FROM prozedur WHERE patient_id={self.os_pat_id})")
-        if len(res) == 1:
+            f"SELECT artdersequenzierung, datum FROM dk_molekulargenetik WHERE id IN (SELECT id FROM prozedur WHERE patient_id={self.os_pat_id}) "
+            f"AND datum > (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} LIMIT 1) ORDER BY datum ASC")
+
+
+        if len(res) == 0:
+            return False
+        else:
             match res[0]['artdersequenzierung']:
                 case 'WES':
                     self.new_case.library_type = 'wes'
