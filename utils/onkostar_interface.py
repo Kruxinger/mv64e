@@ -131,7 +131,7 @@ class OnkostarInterface:
             res = res[0]
             self.new_case.main_diagnosis_date = res["datumerstdiagnose"]
             self.new_case.main_diagnosis_code = res["icd10"] if res["icd10"] not in (None, "None") else ""
-            self.new_case.case_id = res["fallnummermv"]
+            self.new_case.case_id = res["fallnummermv"] if res["fallnummermv"] not in (None, "None") else ""
             if not re.fullmatch("^(?:\d{8,9}|00\d{8,9})$", self.new_case.case_id):
                 self.new_case.case_id = ""
             self.new_case.histology_code = res["icdo3histologie"] if res["icdo3histologie"] not in (None, "None") else ""
@@ -141,7 +141,7 @@ class OnkostarInterface:
 
     def get_mv_consent(self):
         res = self.get_query_res_as_dict(
-            f"SELECT beginndatum, html_schnipsel_komprimiert FROM prozedur WHERE id IN (SELECT consentmv64e FROM dk_dnpm_kpa WHERE id={self.procedure_id})")
+            f"SELECT beginndatum, html_schnipsel_komprimiert FROM prozedur WHERE id IN (SELECT consentmv64e FROM dk_dnpm_kpa WHERE id={self.procedure_id}) AND geloescht=0")
 
         if len(res) != 1:
             return
@@ -170,7 +170,7 @@ class OnkostarInterface:
 
     def get_ecog(self):
         res = self.get_query_res_as_dict(
-            f"SELECT * FROM dk_dnpm_uf_ecog WHERE id IN (SELECT id FROM prozedur WHERE hauptprozedur_id={self.procedure_id})")
+            f"SELECT * FROM dk_dnpm_uf_ecog WHERE id IN (SELECT id FROM prozedur WHERE hauptprozedur_id={self.procedure_id} AND geloescht=0)")
 
         if len(res) == 0:
             self.log_and_flash("Kein ECOG gefunden!", "error")
@@ -192,8 +192,8 @@ class OnkostarInterface:
 
     def get_decision_data(self):
         res = self.get_query_res_as_dict(
-            f"SELECT datum, bemerkung FROM dk_tumorkonferenz WHERE id IN ((SELECT id FROM prozedur WHERE patient_id={self.os_pat_id})) "
-            f"AND tk='indikation' AND datum > (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} LIMIT 1) ORDER BY datum ASC")
+            f"SELECT datum, bemerkung FROM dk_tumorkonferenz WHERE id IN ((SELECT id FROM prozedur WHERE patient_id={self.os_pat_id} AND geloescht=0)) "
+            f"AND tk='indikation' AND datum >= (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} AND geloescht=0 LIMIT 1) ORDER BY datum ASC")
         if len(res) == 0:
             self.log_and_flash("Kein Indikationsboard gefunden", "error")
             return False
@@ -204,12 +204,11 @@ class OnkostarInterface:
             self.new_case.local_case_id = m.group(1)
 
         res = self.get_query_res_as_dict(f"SELECT tk FROM dk_tumorkonferenz WHERE id IN ("
-                                         f"(SELECT id FROM prozedur WHERE patient_id={self.os_pat_id})) AND tk='mvgenomseq' "
+                                         f"(SELECT id FROM prozedur WHERE patient_id={self.os_pat_id} AND geloescht=0)) AND tk='mvgenomseq' "
                                          f"AND datum > {self.new_case.molecular_board_decision_date}")
-        if len(res) == 1:
-            self.new_case.decision_to_include = 1
-            return True
-        self.new_case.decision_to_include = len(res) == 1
+        logging.error("+#+" * 20)
+        logging.error(len(res))
+        self.new_case.decision_to_include = len(res) >= 1
         if not self.new_case.decision_to_include:
             self.new_case.rejection_justification = "otherReason"
 
@@ -226,12 +225,13 @@ class OnkostarInterface:
         self.get_ecog()
         self.get_decision_data()
         self.get_library_type()
+
         return self.new_case
 
     def get_library_type(self):
         res = self.get_query_res_as_dict(
-            f"SELECT artdersequenzierung, datum FROM dk_molekulargenetik WHERE id IN (SELECT id FROM prozedur WHERE patient_id={self.os_pat_id}) "
-            f"AND datum > (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} LIMIT 1) ORDER BY datum ASC")
+            f"SELECT artdersequenzierung, datum FROM dk_molekulargenetik WHERE id IN (SELECT id FROM prozedur WHERE patient_id={self.os_pat_id} AND geloescht=0) "
+            f"AND datum >= (SELECT beginndatum FROM prozedur WHERE id={self.procedure_id} AND geloescht=0 LIMIT 1) ORDER BY datum ASC")
 
 
         if len(res) == 0:

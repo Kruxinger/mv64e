@@ -612,7 +612,7 @@ def onko_import_wiz_step_1():
 
         # Der Patient hat KEIN DNPM Klinik/Anamnese Formular
         if len(prod_ids_dates) == 0:
-            os_interface.log_and_flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "error")
+            os_interface.log_and_flash("Kein DNPM Klinik/Anamnese Formular gefunden.", "danger")
             return redirect(url_for("onko_import_wiz_step_1"))
 
         # Nun prüfen auf Datum: Wir haben viele leere Formulare, meist durch Plugin angelegt
@@ -621,7 +621,7 @@ def onko_import_wiz_step_1():
 
         # Der Patient hat KEIN DNPM Klinik/Anamnese Formular mit einem Datum != None => Nicht (richtig) dokumentiert
         if len(with_date) == 0:
-            flash("Kein DNPM Klinik/Anamnese Formular hat ein valides Datum!", "error")
+            flash("Kein DNPM Klinik/Anamnese Formular hat ein valides Datum!", "danger")
             return redirect(url_for("onko_import_wiz_step_1"))
 
         # Es gibt mehr als ein DNPM Klinik/Anamnese Formular mit validem Datum => Möglich, bei mehreren Einschlüssen
@@ -749,6 +749,7 @@ if __name__ == "__main__":
 
     # ensure tables exist
     with app.app_context():
+
         # if debug:
         #     db.drop_all()
         db.create_all()

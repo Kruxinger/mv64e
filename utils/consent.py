@@ -22,9 +22,9 @@ def get_research_consent(pat_id: str):
         response = session.get(url, headers=headers)
         response.raise_for_status()
         if "entry" in response.json():
-            log_entry_and_flash("", "pat_id", "info", "Broad Consent empfangen.")
+            log_entry_and_flash("", pat_id, "info", "Broad Consent empfangen.")
             return response.json()['entry']
-        log_entry_and_flash("", "pat_id", "warning", "Kein Broad Consent im DIZ dokumentiert")
+        log_entry_and_flash("", pat_id, "warning", "Kein Broad Consent im DIZ dokumentiert")
         return []
     except Exception as e:
-        log_entry_and_flash("", "pat_id", "error", f"Broad Consent konnte nicht abgerufen werden. Fehler: {str(e)}")
+        log_entry_and_flash("", pat_id, "error", f"Broad Consent konnte nicht abgerufen werden. Fehler: {str(e)}")
