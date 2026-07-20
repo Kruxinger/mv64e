@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import ARRAY
 
 db = SQLAlchemy()
@@ -40,6 +41,7 @@ class Case(db.Model):
     tan_c = db.Column(db.String)
     mv_consent = db.Column(db.JSON)
     research_consent = db.Column(ARRAY(db.JSON))
+
     transmitted = db.Column(db.Boolean, default=False)
     is_finalized = db.Column(db.Boolean, default=False)
 
@@ -75,7 +77,7 @@ class Log(db.Model):
     __tablename__ = "logs"
 
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime(timezone=True), default=datetime.now)
+    timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
     pat_id = db.Column(db.String)
     case_id = db.Column(db.String)
     type = db.Column(db.String, nullable=False)  # info / error
@@ -91,7 +93,7 @@ class ServiceStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     service_name = db.Column(db.String, nullable=False)
     status = db.Column(db.Boolean, nullable=False)
-    last_checked = db.Column(db.DateTime, default=datetime.now)
+    last_checked = db.Column(db.DateTime, default=func.now())
 
     def __repr__(self):
         return f"<ServiceStatus {self.service_name}: {self.status}>"

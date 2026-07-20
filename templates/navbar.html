@@ -7,14 +7,23 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav">
         <li class="nav-item"><a class="nav-link" href="/">Fall hinzufügen</a></li>
-        <li class="nav-item"><a class="nav-link" href="/drafts">Entwürfe</a></li>
-        <li class="nav-item"><a class="nav-link" href="/transmit">Übertragung</a></li>
-        <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/constants">Konstanten bearbeiten</a></li>
-        <li class="nav-item"><a class="nav-link" href="/logs">Log</a></li>
-        <li class="nav-item"><a class="nav-link" href="/cases">Fallübersicht</a></li>
-        <li class="nav-item"><a class="nav-link" href="/transmissions/0">Transmissions</a></li>
         <li class="nav-item"><a class="nav-link" href="/onko_import_wiz_step_1">Import aus Onkostar</a></li>
+        <li class="nav-item"><a class="nav-link" href="/cases_overview">Fallübersicht</a></li>
+        {% if  session.get('logged_in_admin') %}
+        <li class="nav-item"><a class="nav-link" href="/admin/constants">Konstanten bearbeiten</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="dataDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Data
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="dataDropdown">
+            <li><a class="dropdown-item" href="/dashboard">Dashboard</a></li>
+            <li><a class="dropdown-item" href="/logs">Log</a></li>
+            <li><a class="dropdown-item" href="/cases">Fallübersicht</a></li>
+            <li><a class="dropdown-item" href="/transmissions/0">Transmissions</a></li>
+          </ul>
+        </li>
+        {% endif %}
+
 
       </ul>
       <ul class="navbar-nav ms-auto">

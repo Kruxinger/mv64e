@@ -15,6 +15,7 @@
             <th>Broad Consent</th>
             <th>TAN</th>
             <th>Aktion</th>
+            <th>Senden</th>
         </tr>
         </thead>
 
@@ -48,17 +49,30 @@
                     <form action="{{ url_for('edit_case', case_id=c.case_id) }}" method="get" class="d-block w-100">
                         <button type="submit" class="btn btn-sm btn-primary w-100">Bearbeiten</button>
                     </form>
-
-                    <form method="post" action="{{ url_for('show_json', case_id=c.case_id) }}" target="_blank" class="d-block w-100">
-                        <button type="submit" class="btn btn-sm btn-info w-100">JSON anzeigen</button>
+                    <form action="{{ url_for('delete_case', case_id=c.case_id) }}"
+                          method="post" class="d-block w-100"
+                          onsubmit="return confirm('Fall wirklich löschen?');">
+                        <button type="submit" class="btn btn-sm btn-danger w-100">
+                            Löschen
+                        </button>
                     </form>
+                    <form method="post" action="{{ url_for('show_json', case_id=c.case_id) }}" target="_blank"
+                          class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">JSON anzeigen</button>
+                    </form>
+                </div>
+            </td>
+            <td>
+                <div class="btn-group-vertical w-100 gap-1">
 
                     {% if c.ready %}
-                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='TEST') }}" class="d-block w-100">
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='TEST') }}"
+                          class="d-block w-100">
                         <button type="submit" class="btn btn-sm btn-warning w-100">Senden an TEST</button>
                     </form>
 
-                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='PROD') }}" class="d-block w-100">
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='PROD') }}"
+                          class="d-block w-100">
                         <button type="submit" class="btn btn-sm btn-success w-100">Senden an PROD</button>
                     </form>
                     {% else %}
@@ -78,6 +92,10 @@
 
     <form action="{{ url_for('reload_consent_tan') }}" method="post" id="reload-form">
         <button type="submit" class="btn btn-warning">Consent und Tan neu laden</button>
+    </form>
+
+    <form action="{{ url_for('reload_consent') }}" method="post" id="reload-form">
+        <button type="submit" class="btn btn-warning">Consent neu laden</button>
     </form>
 
     <div id="notification" style="display:none; margin-top:1em; color:green;">

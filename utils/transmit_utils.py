@@ -8,16 +8,17 @@ import requests
 from flask import flash
 
 from models import Transmission, Case
-from utils.logging import log_entry
+from utils.logging import log_entry_and_flash, flash_msg
 import logging
 
 
 def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
     from app import db
     mv64_endpoint = os.environ.get(f"BFARM_ENDPOINT_{endpoint}")
+    mv64_endpoint_api_key = os.environ.get(f"BFARM_API_KEY_{endpoint}",)
     try:
         headers = {
-            "Authorization": f"X-API-KEY {os.environ.get("BFARM_API_KEY","")}",
+            "Authorization": f"X-API-KEY {mv64_endpoint_api_key}",
             "Content-Type": "application/json",
         }
 
@@ -26,7 +27,7 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
             "http": os.environ.get("PROXY",""),
             "https": os.environ.get("PROXY",""),
         }
-
+        # flash_msg(case.case_id, case.pat_id, 'info', str(payload))
         response = requests.post(mv64_endpoint, headers=headers, json=payload, proxies=proxies, timeout=30)
         status_code = response.status_code
         response_json = response.json() if response.text else {}
@@ -37,40 +38,26 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
         ok = status_code in (200, 202)
         is_prod = endpoint == "PROD"
         success_flag = response_json.get("success")
-
         target_name = "BfArM" if is_prod else "Testknoten"
 
-        # Flash-Kategorie abhängig vom success-Flag
-        if success_flag is False:
-            flash_category = "warning"  # Gelb
-        elif ok:
-            flash_category = "success"  # Grün
-        else:
-            flash_category = "danger"  # Rot
 
-        # Logging-Text
-        if ok:
-            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt."
+        if not ok:
+            msg = f"Fall {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code}).\n{response_json}"
+            log_entry_and_flash(case.case_id, case.pat_id, "error", msg, True)
+        elif ok and not success_flag:
+            msg = f"Fall {case.case_id}: Übermittlung an {target_name} erfolgreich (Status {status_code})."
+            msg += f"\nNachricht konnte NICHT verarbeitet werden:\n{response_json}"
+            log_entry_and_flash(case.case_id, case.pat_id, "error", msg, True)
+        elif ok and success_flag:
+            msg = f"Case {case.case_id}: Erfolgreich an {target_name} übermittelt.\n{response_json}"
+            log_entry_and_flash(case.case_id, case.pat_id, "success", msg, True)
             if is_prod:
                 case.transmitted = True
                 db.session.add(case)
-        else:
-            msg = f"Case {case.case_id}: Übermittlung an {target_name} fehlgeschlagen (Status {status_code})."
-
-        # Log schreiben
-        log_entry(case.case_id, case.pat_id,
-                  "info" if ok else "error",
-                  msg)
-
-        # Flash ausgeben – immer mit response_json
-        flash(f"{msg}\n{response_json}", flash_category)
-
-        db.session.commit()
+                db.session.commit()
 
     except Exception as e:
-        db.session.rollback()
-        log_entry(case.case_id, case.pat_id, "error", f"Case {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}")
-        flash(f"Fehler beim Senden von Case {case.case_id}: {e}", "danger")
+        log_entry_and_flash(case.case_id, case.pat_id, "error", f"Fall {case.case_id}: Konnte nicht an das BfArM übermittelt werden: {e}", True)
         response_json = {}
 
     return response_json
