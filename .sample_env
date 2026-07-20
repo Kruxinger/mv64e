@@ -5,3 +5,8 @@ KEYCLOAK_CLIENT_ID=
 KEYCLOAK_TOKEN_URL=
 PROXY=
 
+# Corporate proxy for the Docker build/runtime (leave empty if not needed)
+HTTP_PROXY=
+HTTPS_PROXY=
+NO_PROXY=localhost,127.0.0.1,db,keycloak,gpas,diz
+

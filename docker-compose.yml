@@ -25,9 +25,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        http_proxy: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
-        https_proxy: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
-        no_proxy: "localhost,127.0.0.1,db,keycloak,gpas,diz"
+        http_proxy: "${HTTP_PROXY:-}"
+        https_proxy: "${HTTPS_PROXY:-}"
+        no_proxy: "${NO_PROXY:-localhost,127.0.0.1,db,keycloak,gpas,diz}"
     container_name: onco_app
     depends_on:
       db:
@@ -35,9 +35,9 @@ services:
     env_file:
       - .env
     environment:
-      HTTP_PROXY: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
-      HTTPS_PROXY: "http://mitproxy0.srv.med.uni-muenchen.de:8080"
-      NO_PROXY: "localhost,127.0.0.1,db,keycloak,gpas,diz"
+      HTTP_PROXY: "${HTTP_PROXY:-}"
+      HTTPS_PROXY: "${HTTPS_PROXY:-}"
+      NO_PROXY: "${NO_PROXY:-localhost,127.0.0.1,db,keycloak,gpas,diz}"
     volumes:
       - .:/app
     ports:

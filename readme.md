@@ -1,3 +1,8 @@
+# Setup
+Bevor die App läuft, müssen die institutionseigenen TLS-Zertifikate unter `certs/`
+abgelegt werden (siehe `certs/README.md`) sowie eine `.env` nach Vorbild von
+`.sample_env` angelegt werden.
+
 # Infos für die Dokumentation
 Der Import der Daten aus Onkostar läuft über das Formular "DNPM Klinik/Anamnese".  
 **Hinweis**: Es werden nur "DNPM Klinik/Anamnese" Formulare mit einem validen Datum in Betracht gezogen. Damit werden 
