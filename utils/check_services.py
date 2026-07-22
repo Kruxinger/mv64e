@@ -5,6 +5,7 @@ import requests
 from models import db, ServiceStatus  # SQLAlchemy Models
 from utils.ca_bundle import get_ca_bundle
 from utils.keycloak import get_keycloak_token
+from utils.logging import log_entry_and_flash
 from utils.tan_service import generate_tan
 
 
@@ -41,6 +42,7 @@ def check_services():
             services["DIZ"] = False
     except Exception as e:
         services["DIZ"] = False
+        log_entry_and_flash("", "", "error", f"DIZ konnte nicht aufgerufen werden. Fehler: {str(e)}")
 
     # --- gPAS ---
     try:
