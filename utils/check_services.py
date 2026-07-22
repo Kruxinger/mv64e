@@ -44,8 +44,9 @@ def check_services():
 
     # --- gPAS ---
     try:
-        tan = generate_tan("TEST001")
-        services["gPAS"] = True
+        test_case_id = os.environ.get("GPAS_HEALTHCHECK_CASE_ID", "000000001")
+        tan = generate_tan(test_case_id)
+        services["gPAS"] = bool(tan)
     except Exception as e:
         services["gPAS"] = False
 
