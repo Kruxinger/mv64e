@@ -1,13 +1,12 @@
 # utils/ca_bundle.py
+import glob
 import os
 import tempfile
 import threading
 
 import certifi
 
-_EXTRA_CERT_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "certs", "geant-tls-rsa-1-intermediate.pem"
-)
+_EXTRA_CERTS_DIR = os.path.join(os.path.dirname(__file__), "..", "certs")
 
 _bundle_path = None
 _lock = threading.Lock()
@@ -15,11 +14,14 @@ _lock = threading.Lock()
 
 def get_ca_bundle():
     """
-    Standard-CA-Store (certifi) + GEANT TLS RSA 1 Intermediate-Zertifikat.
-    medver-keycloak liefert beim TLS-Handshake nur das Leaf-Zertifikat ohne
-    Zwischenzertifikat aus, daher reicht der Standard-Store allein nicht.
-    Das Intermediate ist stabil (gueltig bis 2039), im Gegensatz zum
-    vorher gepinnten, sich staendig aendernden Leaf-Zertifikat.
+    Standard-CA-Store (certifi) + alle *.pem in certs/.
+
+    Die internen/institutseigenen Endpunkte (Keycloak, gPAS, DIZ) liefern
+    entweder eine unvollstaendige Zertifikatskette (fehlendes Intermediate)
+    oder ein selbstsigniertes/institutsinternes Zertifikat, das in keinem
+    oeffentlichen Trust-Store steht. Statt das sich staendig aendernde
+    Leaf-Zertifikat jedes Endpunkts zu pinnen, werden hier die stabilen
+    Zwischen-/Root-Zertifikate als zusaetzliche Trust-Anchor hinterlegt.
     """
     global _bundle_path
     if _bundle_path is None:
@@ -27,8 +29,9 @@ def get_ca_bundle():
             if _bundle_path is None:
                 with open(certifi.where(), "rb") as f:
                     bundle = f.read()
-                with open(_EXTRA_CERT_PATH, "rb") as f:
-                    bundle += b"\n" + f.read()
+                for cert_path in sorted(glob.glob(os.path.join(_EXTRA_CERTS_DIR, "*.pem"))):
+                    with open(cert_path, "rb") as f:
+                        bundle += b"\n" + f.read()
                 fd, path = tempfile.mkstemp(suffix=".pem", prefix="mv64e-ca-bundle-")
                 with os.fdopen(fd, "wb") as f:
                     f.write(bundle)
