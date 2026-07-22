@@ -1,10 +1,15 @@
 # === Python-Dockerfile für Krankenhausnetz mit internen CAs ===
 FROM python:3.12-slim
 
-# PostgreSQL runtime libs + CA utilities
+# System-Abhängigkeiten: PostgreSQL runtime libs, CA utilities, Build-Tools für mysqlclient
 RUN apt-get update && \
-    apt-get install -y libpq5 ca-certificates && \
-    apt-get clean
+    apt-get install -y \
+        libpq5 \
+        ca-certificates \
+        build-essential \
+        default-libmysqlclient-dev \
+        pkg-config \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Proxy für Build & Runtime
 ARG http_proxy
@@ -17,9 +22,11 @@ ENV NO_PROXY=${no_proxy}
 WORKDIR /app
 
 # Requirements installieren
-COPY requirements.txt .
+COPY requirements.txt . 
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Zertifikate kopieren
+COPY certs /app/certs
 
 # Quellcode kopieren
 COPY . .

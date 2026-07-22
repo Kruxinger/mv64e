@@ -6,10 +6,23 @@
 <div class="container my-4">
     <h3>Fallübersicht</h3>
 
-    <!-- Consent/TAN neu laden Button -->
-    <form action="{{ url_for('reload_consent_tan') }}" method="post" id="reload-form" class="mb-3">
+<div class="d-flex gap-2 mb-3">
+
+    <!-- Consent/TAN neu laden -->
+    <form action="{{ url_for('reload_consent_tan') }}" method="post" id="reload-form">
         <button type="submit" class="btn btn-warning">Consent und Tan neu laden</button>
     </form>
+
+    <form action="{{ url_for('reload_consent') }}" method="post" id="reload-form">
+        <button type="submit" class="btn btn-warning">Consent neu laden</button>
+    </form>
+
+    <!-- Download -->
+    <a href="{{ url_for('download_cases') }}" class="btn btn-secondary">
+        Alle Fälle herunterladen
+    </a>
+
+</div>
 
     <table class="table table-bordered table-striped align-middle">
         <thead class="table-dark">

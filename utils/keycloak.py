@@ -19,7 +19,7 @@ def get_keycloak_token(client_id, url):
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     proxies = {"http": os.getenv("PROXY", ""), "https": os.getenv("PROXY", "")}
-    verify = "certs/key_cloak.crt"
+    verify = "certs/medver-keycloak-srv-med-uni-muenchen-de-zertifikatskette.pem"
     try:
         response = requests.post(
             url,

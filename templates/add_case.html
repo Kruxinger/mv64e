@@ -3,6 +3,13 @@
 {% block title %}Fall hinzufügen – OncoApp{% endblock %}
 
 {% block content %}
+<style>
+/* Rot hinterlegen */
+.missing-field {
+    background-color: #ffdddd !important;
+    border-color: #cc0000 !important;
+}
+</style>
 <div class="container my-4">
     <h3>Fall hinzufügen</h3>
 
@@ -142,7 +149,7 @@
         <hr/>
 
         <div class="col-md-4">
-            <label class="form-label">Library Type</label>
+            <label class="form-label">Art der Sequenzierung</label>
             <select name="library_type" class="form-select">
                 <option></option>
                 {% for lib in ['wes','wgs','wgs_lr','panel','none'] %}
@@ -254,6 +261,34 @@ document.querySelector("form").addEventListener("submit", function(e) {
         alert(errors.join("\n"));
     }
 });
+document.addEventListener('DOMContentLoaded', function() {
+
+    // Flag aus dem Template
+    const isEditMode = {{ 'true' if case else 'false' }};
+
+    if (!isEditMode) return;  // Nur im Edit-Modus markieren
+
+    // Alle relevanten Felder auswählen
+    const fields = document.querySelectorAll('input, select, textarea');
+
+    fields.forEach(f => {
+        // „leer“ definieren:
+        const isEmpty =
+            (f.tagName === 'INPUT' && f.type === 'date' && !f.value) ||
+            (f.tagName === 'INPUT' && f.type !== 'date' && f.value.trim() === '') ||
+            (f.tagName === 'SELECT' && (!f.value || f.value === '')) ||
+            (f.tagName === 'TEXTAREA' && f.value.trim() === '');
+
+        if (isEmpty) {
+            f.classList.add('missing-field');
+        }
+    });
+
+});
+
+
+
+
 
 </script>
 {% endblock %}

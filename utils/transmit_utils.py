@@ -8,7 +8,7 @@ import requests
 from flask import flash
 
 from models import Transmission, Case
-from utils.logging import log_entry_and_flash
+from utils.logging import log_entry_and_flash, flash_msg
 import logging
 
 
@@ -27,7 +27,7 @@ def send(payload: dict, endpoint: Literal["TEST","PROD"], case: Case):
             "http": os.environ.get("PROXY",""),
             "https": os.environ.get("PROXY",""),
         }
-
+        # flash_msg(case.case_id, case.pat_id, 'info', str(payload))
         response = requests.post(mv64_endpoint, headers=headers, json=payload, proxies=proxies, timeout=30)
         status_code = response.status_code
         response_json = response.json() if response.text else {}

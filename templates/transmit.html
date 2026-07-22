@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Übertragung – OncoApp{% endblock %}
+
+{% block content %}
+
+<div class="container my-4">
+    <h3>Fälle zur Übertragung</h3>
+
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+        <tr>
+            <th>Patienten-ID</th>
+            <th>Case-ID</th>
+            <th>Broad Consent</th>
+            <th>TAN</th>
+            <th>Aktion</th>
+            <th>Senden</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        {% for c in cases %}
+        <tr class="{{ 'table-success' if c.ready else 'table-warning' }}">
+            <td>{{ c.pat_id }}</td>
+            <td>{{ c.case_id }}</td>
+            <td>
+                {% if c.research_consent %}
+                <a href="#" class="text-success"
+                   data-bs-toggle="modal"
+                   data-bs-target="#consentModal"
+                   data-consent='{{ c.research_consent | tojson }}'>
+                    ✅ vorhanden
+                </a>
+                {% else %}
+                ❌ fehlt
+                {% endif %}
+            </td>
+            <td>
+                {% if c.tan_c %}
+                ✅ {{ c.tan_c }}
+                {% else %}
+                ❌ fehlt
+                {% endif %}
+            </td>
+            <td>
+                <div class="btn-group-vertical w-100 gap-1">
+
+                    <form action="{{ url_for('edit_case', case_id=c.case_id) }}" method="get" class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">Bearbeiten</button>
+                    </form>
+                    <form action="{{ url_for('delete_case', case_id=c.case_id) }}"
+                          method="post" class="d-block w-100"
+                          onsubmit="return confirm('Fall wirklich löschen?');">
+                        <button type="submit" class="btn btn-sm btn-danger w-100">
+                            Löschen
+                        </button>
+                    </form>
+                    <form method="post" action="{{ url_for('show_json', case_id=c.case_id) }}" target="_blank"
+                          class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">JSON anzeigen</button>
+                    </form>
+                </div>
+            </td>
+            <td>
+                <div class="btn-group-vertical w-100 gap-1">
+
+                    {% if c.ready %}
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='TEST') }}"
+                          class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">Senden an TEST</button>
+                    </form>
+
+                    <form method="post" action="{{ url_for('send_case', case_id=c.case_id, bfarm_endpoint='PROD') }}"
+                          class="d-block w-100">
+                        <button type="submit" class="btn btn-sm btn-success w-100">Senden an PROD</button>
+                    </form>
+                    {% else %}
+                    <button class="btn btn-sm btn-secondary w-100" disabled>Senden</button>
+                    {% endif %}
+
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if not cases %}
+    <p>Keine Fälle vorhanden.</p>
+    {% endif %}
+
+    <form action="{{ url_for('reload_consent_tan') }}" method="post" id="reload-form">
+        <button type="submit" class="btn btn-warning">Consent und Tan neu laden</button>
+    </form>
+
+    <form action="{{ url_for('reload_consent') }}" method="post" id="reload-form">
+        <button type="submit" class="btn btn-warning">Consent neu laden</button>
+    </form>
+
+    <div id="notification" style="display:none; margin-top:1em; color:green;">
+        Der Prozess wurde gestartet. Das kann einige Sekunden bis Minuten dauern.
+    </div>
+</div>
+<div class="modal fade" id="consentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Broad Consent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="consent-json" style="white-space: pre-wrap;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+</div>
+<script>
+    document.getElementById('reload-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      fetch(this.action, { method: 'POST' })
+        .then(() => {
+          document.getElementById('notification').style.display = 'block';
+        })
+        .catch(() => {
+          alert('Fehler beim Starten des Reload-Prozesses.');
+        });
+    });
+    document.getElementById('consentModal').addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    const raw = trigger.getAttribute('data-consent');
+    const parsed = JSON.parse(raw);
+
+    document.getElementById('consent-json').textContent =
+        JSON.stringify(parsed, null, 2);
+});
+</script>
+{% endblock %}
+
+

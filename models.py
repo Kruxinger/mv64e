@@ -93,7 +93,7 @@ class ServiceStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     service_name = db.Column(db.String, nullable=False)
     status = db.Column(db.Boolean, nullable=False)
-    last_checked = db.Column(db.DateTime,  server_default=func.now())
+    last_checked = db.Column(db.DateTime, default=func.now())
 
     def __repr__(self):
         return f"<ServiceStatus {self.service_name}: {self.status}>"

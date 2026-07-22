@@ -1,4 +1,5 @@
 # app.py (SQLAlchemy-Variante)
+import csv
 import logging
 # Standard library
 from datetime import datetime, timedelta, date
@@ -7,7 +8,9 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from flask import send_from_directory, jsonify
+from io import StringIO
+
+from flask import send_from_directory, jsonify, Response
 import os
 
 from flask import Flask, render_template, request, redirect, flash, url_for, session
@@ -135,7 +138,7 @@ def login():
 # ---- Before Request Hook ----
 @app.before_request
 def require_login():
-    if request.endpoint in ("login", "static", "favicon"):
+    if request.endpoint in ("login", "static", "favicon", "upload_case_by_id"):
         return  # login-Seite und statische Dateien ausnehmen
     if not session.get('logged_in_admin') and not session.get('logged_in_doku'):
         session['next'] = request.path
@@ -211,6 +214,37 @@ def cases_overview():
         cases_serialized.append(d)
 
     return render_template("cases_overview.html", cases=cases_serialized)
+
+@app.route("/cases/download")
+def download_cases():
+    # Alle Cases holen
+    cases = Case.query.all()
+
+    # CSV erzeugen
+    si = StringIO()
+    writer = csv.writer(si)
+
+    # Spaltenüberschriften automatisch aus dem Model
+    cols = [c.name for c in Case.__table__.columns]
+    writer.writerow(cols)
+
+    # Daten
+    for case in cases:
+        row = [getattr(case, col) for col in cols]
+        writer.writerow(row)
+
+    output = si.getvalue()
+    si.close()
+
+    # Response zurückgeben
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=cases.csv"
+        }
+    )
+
 
 @app.route("/unlock_case/<case_id>", methods=["POST"])
 def unlock_case(case_id):
@@ -370,6 +404,14 @@ def reload_consent_tan():
             executor.submit(generate_tan_async, c.id, c.case_id)
     return ("", 204)
 
+@app.route("/reload_consent", methods=["POST"])
+def reload_consent():
+    cases = Case.query.filter(Case.transmitted.is_(False)).all()
+    for c in cases:
+        if not c.transmitted:
+            executor.submit(fetch_research_consent_async, c.id, c.pat_id)
+    return ("", 204)
+
 
 @app.route("/admin/constants", methods=["GET", "POST"])
 def edit_constants():
@@ -514,14 +556,47 @@ def send_case():
     send(payload=payload, endpoint=endpoint, case=case)
     return redirect(url_for("cases_overview"))
 
+@app.route("/rem_not_transmitted", methods=["GET", "POST"])
+def rem_not_transmitted():
+    cases = Case.query.filter_by(transmitted=False).all()
+    for case in cases:
+        db.session.delete(case)
+    db.session.commit()
+    return jsonify({'removed': True})
 
 @app.route("/upload_case_by_id", methods=["GET", "POST"])
 def upload_case_by_id():
     if request.method == "POST":
-        pat_id = request.args.get("pat_id")
-        action = request.args.get("action")
-        mode = request.args.get("mode")
-        # TODO: Not implemented
+        case = Case.query.filter_by(case_id="").first()
+        if case:
+            db.session.delete(case)
+            db.session.commit()
+        data = request.get_json()
+        pat_id = data.get("pat_id")
+        action = data.get("action")
+        mode = data.get("mode")
+        match action:
+            case 'CREATE_CASE':
+                try:
+                    os_interface = OnkostarInterface()
+                    res_status, res = os_interface.get_case_automized(pat_id, get_constants()['onkostar_personenstamm'])
+                    if res_status:
+                        case = Case.query.filter_by(case_id=res.case_id, pat_id=res.pat_id).first()
+                        if case and case.transmitted:
+                            return jsonify({"success": False, "msg": f"Case {res.case_id} existiert bereits."})
+                        db.session.add(res)
+                        db.session.commit()
+                        return jsonify({"success":True, "msg":f"Case {res.case_id} created."})
+                    else:
+                        return jsonify({"success": False, "msg": res})
+                except Exception as e:
+                    return jsonify({"success": False, 'msg': f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"})
+
+            case 'CREATE_JSON':
+                pass # TODO: Not implemented
+            case 'CREATE_AND_SEND_CASE':
+                pass  # TODO: Not implemented
+        return jsonify({"msg": f"action: {action} | pat_id:{pat_id}"})
 
     else:
         s = {

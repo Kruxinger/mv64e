@@ -4,6 +4,8 @@ import os
 import re
 
 from flask import flash
+
+from utils import data_server_interface
 from utils.logging import log_entry_and_flash
 from sqlalchemy import create_engine, text, Engine
 from models import Case, Constant
@@ -50,7 +52,12 @@ class OnkostarInterface:
         """
         if len(self.get_query_res_as_dict(f"SELECT * FROM personenstamm WHERE name='{personenstamm}'")) == 0:
             return False, f"Personenstamm '{personenstamm}' nicht gefunden!"
-        res = self.get_query_res_as_dict(f"SELECT * FROM patient WHERE patienten_id='{pat_id}'")
+        res = self.get_query_res_as_dict(
+            f"SELECT * FROM patient JOIN personenstamm ON "
+            f"patient.personenstamm=personenstamm.id WHERE patient.patienten_id={pat_id} "
+            f"AND personenstamm.name='{personenstamm}'")
+
+
         if len(res) > 1:
             return False, f"Es wurden mehrere Patienten mit Pat ID {pat_id} im Personenstamm {personenstamm} gefunden"
         if len(res) == 0:
@@ -59,32 +66,45 @@ class OnkostarInterface:
         self.personenstamm = personenstamm
         self.get_pat_data(pat_id)
         res = self.get_anamnese_procedures()
-        if len(res) > 1:
-            return False, f"Es wurden mehrere Prozeduren 'DNPM Klinik/Anamnese' (mit validem Datum) zum Patienten {pat_id} gefunden"
         if len(res) == 0:
-            return False, f"Es wurden keine Prozeduren 'DNPM Klinik/Anamnese' (mit validem Datum) zum Patienten {pat_id} gefunden"
-
+            return False, f"Es wurden keine Prozeduren 'DNPM Klinik/Anamnese' zum Patienten {pat_id} gefunden"
+        with_date = [p for p in res if p["beginndatum"] is not None]
+        if len(with_date) > 1:
+            return False, f"Es wurden mehrere Prozeduren 'DNPM Klinik/Anamnese' (mit validem Datum) zum Patienten {pat_id} gefunden"
+        else:
+            self.procedure_id = with_date[0]['id']
         self.get_dnpm_kpa_data()
-        required = [
-            self.new_case.main_diagnosis_date,
-            self.new_case.main_diagnosis_code,
-            self.new_case.case_id,
-            self.new_case.histology_code,
-            self.new_case.topography_code
-        ]
-        if not all(v not in (None, "") for v in required):
-            return False, (f"Es konnten nicht alle notwendigen Werte aus dk_dnpm_kpa geladen werden (datumerstdiagnose, "
-                           f"icd10, fallnummermv, artderkrankenkasse, icdo3histologie, icdo3lokalisation)")
+        # required = [
+        #     self.new_case.main_diagnosis_date,
+        #     self.new_case.main_diagnosis_code,
+        #     self.new_case.case_id,
+        #     self.new_case.histology_code,
+        #     self.new_case.topography_code
+        # ]
+        # if not all(v not in (None, "") for v in required):
+        #     return False, (f"Es konnten nicht alle notwendigen Werte aus dk_dnpm_kpa geladen werden (datumerstdiagnose, "
+        #                    f"icd10, fallnummermv, artderkrankenkasse, icdo3histologie, icdo3lokalisation)")
+        # if not re.fullmatch("^(?:\d{8,9}|00\d{8,9})$", self.new_case.case_id):
+        #     return False, f"Fallnummer entspricht nicht dem vorgegebenen Format. Found: {self.new_case.case_id}"
+        self.get_mv_consent()
+        # if "presentationDate" not in self.new_case.mv_consent:
+        #     return False, f"MV Consent konnte nicht geladen werden"
+        self.get_ecog()
+        # if not self.get_ecog():
+        #     return False, "ECOG konnte nicht ermittelt werden"
+        self.get_decision_data()
+        self.get_library_type()
+        # if not self.get_library_type():
+        #     return False, "Library Type konnte nicht identifiziert werden!"
+        if self.new_case.case_id in (None, ""):
+            gs_ids = data_server_interface.get_fallnummern(self.new_case.pat_id)
+            if len(gs_ids) == 1:
+                self.new_case.case_id = str(gs_ids[0])
+        if self.new_case.case_id in ("", None):
+            return False, f"Keine Fallnummer gefunden"
         if not re.fullmatch("^(?:\d{8,9}|00\d{8,9})$", self.new_case.case_id):
             return False, f"Fallnummer entspricht nicht dem vorgegebenen Format. Found: {self.new_case.case_id}"
-        self.get_mv_consent()
-        if "presentationDate" not in self.new_case.mv_consent:
-            return False, f"MV Consent konnte nicht geladen werden"
-        if not self.get_ecog():
-            return False, "ECOG konnte nicht ermittelt werden"
-        self.get_decision_data()
-        if not self.get_library_type():
-            return False, "Library Type konnte nicht identifiziert werden!"
+
         return True, self.new_case
 
     def get_pat_data(self, pat_id_lmu: str) -> bool:
@@ -104,10 +124,13 @@ class OnkostarInterface:
                     self.new_case.gender = "divers"
             self.new_case.pat_id = pat_id_lmu
 
-            if res['krankenkassennummer'].startswith("10"):
-                self.new_case.coverage_type = 'GKV'
-            elif res['krankenkassennummer'].startswith("16"):
-                self.new_case.coverage_type = 'PKV'
+            try:
+                if res.get('krankenkassennummer','').startswith("10"):
+                    self.new_case.coverage_type = 'GKV'
+                elif res.get('krankenkassennummer','').startswith("16"):
+                    self.new_case.coverage_type = 'PKV'
+            except Exception as _:
+                self.new_case.coverage_type = ''
 
             self.new_case.birth_date = res['geburtsdatum']
 
