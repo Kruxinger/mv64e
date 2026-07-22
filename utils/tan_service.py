@@ -5,6 +5,7 @@ from zeep.exceptions import Fault
 from requests import Session
 import os
 import logging
+from utils.ca_bundle import get_ca_bundle
 from utils.keycloak import get_keycloak_token
 from utils.logging import log_entry_and_flash
 
@@ -16,7 +17,7 @@ def get_session():
     proxy = os.environ.get("PROXY")
     if proxy:
         session.proxies = {"http": proxy, "https": proxy}
-    session.verify = "certs/gpas.crt"
+    session.verify = get_ca_bundle()
     session.headers.update({"Authorization": f"Bearer {get_keycloak_token(os.environ["KEYCLOAK_GPAS_CLIENT_ID"],os.environ["KEYCLOAK_GPAS_TOKEN_URL"])}"})
     return session
 

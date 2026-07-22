@@ -1,6 +1,7 @@
 # utils/consent.py
 import os
 from requests import Session
+from utils.ca_bundle import get_ca_bundle
 from utils.keycloak import get_keycloak_token
 from utils.logging import log_entry_and_flash
 
@@ -10,7 +11,7 @@ def get_session():
     proxy = os.environ.get("PROXY")
     if proxy:
         session.proxies = {"http": proxy, "https": proxy}
-    session.verify = "certs/diz.crt"
+    session.verify = get_ca_bundle()
     return session
 
 def get_research_consent(pat_id: str):

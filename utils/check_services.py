@@ -1,9 +1,9 @@
 import logging
 import os
 
-import certifi
 import requests
 from models import db, ServiceStatus  # SQLAlchemy Models
+from utils.ca_bundle import get_ca_bundle
 from utils.keycloak import get_keycloak_token
 from utils.tan_service import generate_tan
 
@@ -33,7 +33,7 @@ def check_services():
             r = requests.get(
                 os.environ.get("DIZ_CONSENT_ENDPOINT"),
                 headers=headers,
-                verify="certs/diz.crt",  # hier dein Zertifikat
+                verify=get_ca_bundle(),
                 timeout=5
             )
             services["DIZ"] = r.status_code == 200

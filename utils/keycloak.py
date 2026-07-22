@@ -4,6 +4,7 @@ import os
 import time
 import requests
 
+from utils.ca_bundle import get_ca_bundle
 from utils.logging import log_entry_and_flash
 
 
@@ -19,7 +20,7 @@ def get_keycloak_token(client_id, url):
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     proxies = {"http": os.getenv("PROXY", ""), "https": os.getenv("PROXY", "")}
-    verify = "certs/key_cloak.crt"
+    verify = get_ca_bundle()
     try:
         response = requests.post(
             url,
