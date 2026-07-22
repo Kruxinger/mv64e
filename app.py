@@ -579,7 +579,7 @@ def view_logs():
     if case_id:
         logs = Log.query.filter_by(case_id=case_id).order_by(Log.timestamp.asc()).all()
     else:
-        logs = Log.query.order_by(Log.timestamp.asc()).limit(200).all()
+        logs = Log.query.order_by(Log.timestamp.desc()).limit(200).all()[::-1]
 
     logging.error(logs[0].timestamp)
 
